@@ -1,0 +1,50 @@
+# ==========================================
+# .gitignore NLDMAP 
+# ==========================================
+
+# 1. Entornos de Desarrollo 
+# ------------------------------------------
+# JetBrains Rider
+.idea/
+*.sln.DotSettings.user
+*.user
+*.suo
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# 2. Backend (.NET 8 & C#)
+# ------------------------------------------
+# Directorios de compilación
+bin/
+obj/
+TestResults/
+
+# Configuraciones locales y secretos
+appsettings.Development.json
+appsettings.Local.json
+*.userprefs
+
+# 3. Frontend (Flutter & Dart)
+# ------------------------------------------
+# Directorios de compilación móvil
+build/
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Archivos nativos autogenerados (iOS/Android)
+*.xcworkspace/xcuserdata
+*.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+android/.gradle/
+android/app/build/
+android/local.properties
+
+# 4. Sistema Operativo (Debian, Windows)
+# ------------------------------------------
+.DS_Store
+Thumbs.db
+*~
+*.swp
