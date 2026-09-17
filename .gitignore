@@ -1,49 +1,65 @@
-# ==========================================
-# .gitignore NLDMAP 
-# ==========================================
-
-# 1. Entornos de Desarrollo 
-# ------------------------------------------
-# JetBrains Rider
+# Entornos de desarrollo
 .idea/
 *.sln.DotSettings.user
 *.user
 *.suo
-
-# Visual Studio Code
 .vscode/
 *.code-workspace
 
-# 2. Backend (.NET 8 & C#)
-# ------------------------------------------
-# Directorios de compilación
+# .NET
 bin/
 obj/
 TestResults/
+BenchmarkDotNet.Artifacts/
+*.userprefs
+*.nupkg
+*.snupkg
+project.lock.json
+artifacts/
 
-# Configuraciones locales y secretos
+# Configuración local y secretos
 appsettings.Development.json
 appsettings.Local.json
-*.userprefs
+secrets.json
+*.env
+.env
+.env.*
+!.env.example
+!.env.*.example
 
-# 3. Frontend (Flutter & Dart)
-# ------------------------------------------
-# Directorios de compilación móvil
+# Logs y cobertura
+*.log
+coverage/
+coverage.*
+TestResults/
+
+# Flutter / Dart
 build/
 .dart_tool/
 .packages
 .flutter-plugins
 .flutter-plugins-dependencies
+*.iml
 
-# Archivos nativos autogenerados (iOS/Android)
-*.xcworkspace/xcuserdata
-*.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+# Android / iOS generado
+**/xcuserdata/
+**/*.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
 android/.gradle/
 android/app/build/
 android/local.properties
 
-# 4. Sistema Operativo (Debian, Windows)
-# ------------------------------------------
+# Dependencias y builds de otros frontends
+node_modules/
+dist/
+.next/
+.nuxt/
+
+# Herramientas locales
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# Sistema operativo
 .DS_Store
 Thumbs.db
 *~

@@ -1,0 +1,20 @@
+services:
+
+  dev:
+    build:
+      context: .
+      dockerfile: docker/dev/Dockerfile
+  
+    container_name: nldmap-dev
+
+    working_dir: /workspace
+
+    volumes: 
+      - .:/workspace
+
+
+    stdin_open: true
+    tty: true
+
+    command: sleep infinity
+

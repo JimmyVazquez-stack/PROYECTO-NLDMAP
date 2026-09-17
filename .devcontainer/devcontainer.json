@@ -1,0 +1,24 @@
+{
+    "name": "NLDMAP Develompment",
+
+    "dockerComposeFile": "../docker-compose.yml",
+
+    "service": "dev",
+
+    "workspaceFolder": "/workspace",
+    
+    "shutdownAction": "stopCompose",
+
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "terminal.integrated.profiles.linux": {
+                    "zsh": {
+                        "path": "/usr/bin/zsh"
+                    }
+                },
+                "terminal.integrated.defaultProfile.linux": "zsh"
+            }
+        }
+    }
+}
