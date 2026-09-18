@@ -16,6 +16,8 @@ RUN apt-get update && apt-get install -y \
     procps \
     iputils-ping \
     zsh \
+    libicu-dev \
+    libssl-dev \    
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 
@@ -53,6 +55,18 @@ RUN git clone --depth=1 \
 
 COPY docker/dev/.zshrc /root/.zshrc
 COPY docker/dev/.p10k.zsh /root/.p10k.zsh
+
+#Instalacion de .NET SDK 8.0
+RUN wget https://dot.net/v1/dotnet-install.sh -O /tmp/dotnet-install.sh \
+    && chmod +x /tmp/dotnet-install.sh \
+    && /tmp/dotnet-install.sh \
+        --channel 8.0 \
+        --install-dir /usr/share/dotnet \
+    && ln -s /usr/share/dotnet/dotnet /usr/local/bin/dotnet \
+    && rm /tmp/dotnet-install.sh
+
+ENV DOTNET_ROOT=/usr/share/dotnet
+ENV PATH="${PATH}:${DOTNET_ROOT}"
 
 WORKDIR /workspace
 
