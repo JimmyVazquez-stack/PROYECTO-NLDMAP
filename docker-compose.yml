@@ -5,9 +5,6 @@ services:
       context: .
       dockerfile: docker/dev/Dockerfile
 
-    env_file:
-      - .env.backend
-
     container_name: nldmap-dev
 
     working_dir: /workspace
@@ -36,7 +33,6 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env.persistence
-      - .env.backend
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
