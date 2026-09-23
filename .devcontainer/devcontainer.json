@@ -1,12 +1,14 @@
 {
-    "name": "NLDMAP Develompment",
+    "name": "NLDMAP Development",
 
     "dockerComposeFile": "../docker-compose.yml",
 
     "service": "dev",
 
+    "runServices": ["postgres", "dev"],
+
     "workspaceFolder": "/workspace",
-    
+
     "shutdownAction": "stopCompose",
 
     "customizations": {
@@ -21,7 +23,7 @@
             },
             "extensions": [
                 "ms-dotnettools.csdevkit",
-                "ms-dotnettools.csharp",
+                "ms-dotnettools.csharp"
             ]
         }
     }
