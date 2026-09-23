@@ -5,7 +5,7 @@
 
     "service": "dev",
 
-    "runServices": ["postgres", "dev"],
+    "runServices": ["postgres", "dev", "mongo"],
 
     "workspaceFolder": "/workspace",
 
