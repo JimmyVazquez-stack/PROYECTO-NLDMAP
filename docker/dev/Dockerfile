@@ -1,5 +1,8 @@
 FROM debian:13
 
+# Configuración regional UTF-8 para zsh, Perl y herramientas de consola
+ENV LANG=C.UTF-8
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y \
@@ -16,6 +19,7 @@ RUN apt-get update && apt-get install -y \
     procps \
     iputils-ping \
     zsh \
+    postgresql-client \
     libicu-dev \
     libssl-dev \    
     && apt-get clean && rm -rf /var/lib/apt/lists/*
