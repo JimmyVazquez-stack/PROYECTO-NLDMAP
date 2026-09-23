@@ -23,6 +23,7 @@ appsettings.Local.json
 secrets.json
 *.env
 .env
+.env.persistence
 .env.*
 !.env.example
 !.env.*.example
@@ -64,3 +65,6 @@ dist/
 Thumbs.db
 *~
 *.swp
+
+#
+.docs
