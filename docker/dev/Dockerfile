@@ -24,6 +24,15 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \    
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Cliente MongoDB para consultar el servicio mongo desde dev
+ARG MONGOSH_VERSION=2.8.1
+RUN curl -fsSL \
+      "https://downloads.mongodb.com/compass/mongodb-mongosh_${MONGOSH_VERSION}_amd64.deb" \
+      -o /tmp/mongodb-mongosh.deb \
+    && apt-get update \
+    && apt-get install -y /tmp/mongodb-mongosh.deb \
+    && rm /tmp/mongodb-mongosh.deb \
+    && rm -rf /var/lib/apt/lists/*
 
 #Instalamos oh my zsh
 RUN git clone --depth=1\
