@@ -1,5 +1,8 @@
 FROM debian:13
 
+# Configuración regional UTF-8 para zsh, Perl y herramientas de consola
+ENV LANG=C.UTF-8
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y \
@@ -16,10 +19,20 @@ RUN apt-get update && apt-get install -y \
     procps \
     iputils-ping \
     zsh \
+    postgresql-client \
     libicu-dev \
     libssl-dev \    
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Cliente MongoDB para consultar el servicio mongo desde dev
+ARG MONGOSH_VERSION=2.8.1
+RUN curl -fsSL \
+      "https://downloads.mongodb.com/compass/mongodb-mongosh_${MONGOSH_VERSION}_amd64.deb" \
+      -o /tmp/mongodb-mongosh.deb \
+    && apt-get update \
+    && apt-get install -y /tmp/mongodb-mongosh.deb \
+    && rm /tmp/mongodb-mongosh.deb \
+    && rm -rf /var/lib/apt/lists/*
 
 #Instalamos oh my zsh
 RUN git clone --depth=1\
