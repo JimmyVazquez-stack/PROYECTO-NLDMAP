@@ -27,6 +27,8 @@ services:
         condition: service_healthy
       neo4j:
         condition: service_healthy
+      neo4j-init:
+        condition: service_completed_successfully
     networks:
       - nldmap-network
 
@@ -35,7 +37,7 @@ services:
       context: ./docker/postgres
       dockerfile: Dockerfile
     env_file:
-      - .env.persistence
+      - .env.postgresql
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
@@ -89,6 +91,29 @@ services:
      start_period: 30s
     networks:
      - nldmap-network
+
+  neo4j-init:
+    build:
+      context: ./docker/neo4j
+      dockerfile: Dockerfile
+    env_file:
+      - .env.neo4j
+    entrypoint: ["/bin/bash", "-ec"]
+    command: |
+      export NEO4J_PASSWORD="$${NEO4J_AUTH#neo4j/}"
+      [[ "$${NLDMAP_NEO4J_DEV_PASSWORD}" =~ ^[A-Za-z0-9]+$$ ]] || {
+      echo "La contraseña demo de dev debe ser alfanumérica"
+      exit 1
+      }
+      cypher-shell -a bolt://neo4j:7687 -u neo4j -d system \
+      "CREATE USER dev IF NOT EXISTS SET PASSWORD '$${NLDMAP_NEO4J_DEV_PASSWORD}' CHANGE NOT REQUIRED;"
+      cypher-shell -a bolt://neo4j:7687 -u neo4j -d system \
+      "GRANT ROLE publisher TO dev;"
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    networks:
+      - nldmap-network
 
 volumes:
   nldmap_postgres_data:
