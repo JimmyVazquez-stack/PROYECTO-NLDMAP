@@ -5,7 +5,7 @@
 
     "service": "dev",
 
-    "runServices": ["postgres", "dev", "mongo", "neo4j"],
+    "runServices": ["postgres", "dev", "mongo", "neo4j", "neo4j-init"],
 
     "workspaceFolder": "/workspace",
 

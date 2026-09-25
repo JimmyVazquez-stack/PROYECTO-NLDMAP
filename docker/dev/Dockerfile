@@ -69,15 +69,18 @@ RUN git clone --depth=1 \
 COPY docker/dev/.zshrc /root/.zshrc
 COPY docker/dev/.p10k.zsh /root/.p10k.zsh
 
-#Instalacion de .NET SDK 8.0
+# SDK 8 y 9: el backend usa net8.0 y SDK 9 admite soluciones .slnx
 RUN wget https://dot.net/v1/dotnet-install.sh -O /tmp/dotnet-install.sh \
     && chmod +x /tmp/dotnet-install.sh \
     && /tmp/dotnet-install.sh \
         --channel 8.0 \
         --install-dir /usr/share/dotnet \
+    && /tmp/dotnet-install.sh \
+        --channel 9.0 \
+        --install-dir /usr/share/dotnet \
     && ln -s /usr/share/dotnet/dotnet /usr/local/bin/dotnet \
     && rm /tmp/dotnet-install.sh
-
+    
 ENV DOTNET_ROOT=/usr/share/dotnet
 ENV PATH="${PATH}:${DOTNET_ROOT}"
 
