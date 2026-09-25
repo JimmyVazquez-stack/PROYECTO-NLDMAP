@@ -24,7 +24,6 @@ secrets.json
 *.env
 .env
 .env.persistence
-.env.*
 !.env.example
 !.env.*.example
 
