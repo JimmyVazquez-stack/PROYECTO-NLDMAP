@@ -23,7 +23,6 @@ appsettings.Local.json
 secrets.json
 *.env
 .env
-.env.persistence
 !.env.example
 !.env.*.example
 
