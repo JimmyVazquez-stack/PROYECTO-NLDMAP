@@ -56,8 +56,8 @@ git switch --track origin/feature/bug-fix
 
 
 
-git config --global user.name "Eduardusky"
-git config --global user.email "99711045+Eduardusky@users.noreply.github.com"
+git config --global user.name ""
+git config --global user.email ""
 
 
 
