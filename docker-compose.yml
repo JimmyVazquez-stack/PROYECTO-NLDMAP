@@ -25,6 +25,8 @@ services:
         condition: service_healthy
       mongo:
         condition: service_healthy
+      neo4j:
+        condition: service_healthy
     networks:
       - nldmap-network
 
@@ -68,9 +70,30 @@ services:
     networks:
         - nldmap-network
 
+  neo4j:
+    build:
+      context: ./docker/neo4j
+      dockerfile: Dockerfile
+    env_file:
+     - .env.neo4j
+    ports:
+     - "127.0.0.1:7474:7474"
+     - "127.0.0.1:7687:7687"
+    volumes:
+     - nldmap_neo4j_data:/data
+    healthcheck:
+     test: ["CMD-SHELL", "bash -c ':</dev/tcp/127.0.0.1/7687'"]
+     interval: 15s
+     timeout: 5s
+     retries: 12
+     start_period: 30s
+    networks:
+     - nldmap-network
+
 volumes:
   nldmap_postgres_data:
   nldmap_mongo_data:
+  nldmap_neo4j_data:
 
 networks:
   nldmap-network:
