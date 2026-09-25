@@ -52,7 +52,17 @@ PREPARACIÓN EN WINDOWS: WSL Y DOCKER DESKTOP
 tener instalado docker y dev containers extension vs code
 
 
+git switch --track origin/feature/bug-fix
 
+
+
+git config --global user.name "Eduardusky"
+git config --global user.email "99711045+Eduardusky@users.noreply.github.com"
+
+
+
+
+wsl --shutdown
 
 git fetch origin
 git switch develop
