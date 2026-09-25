@@ -1,0 +1,3 @@
+docker/dev/.zshrc text eol=lf
+docker/dev/.p10k.zsh text eol=lf
+docker/postgres/init/*.sh text eol=lf
