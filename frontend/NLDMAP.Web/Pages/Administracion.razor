@@ -1,0 +1,14 @@
+@page "/administracion"
+@attribute [Authorize(Roles = "Administrador")]
+
+<PageTitle>Administración</PageTitle>
+
+<h1>Administración</h1>
+
+<p>En esta sección construiremos la gestión de usuarios y permisos.</p>
+
+<AuthorizeView>
+    <Authorized Context="authState">
+        <p>Usuario: @authState.User.Identity?.Name</p>
+    </Authorized>
+</AuthorizeView>

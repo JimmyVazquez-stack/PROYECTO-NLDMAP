@@ -1,6 +1,0 @@
-<Solution>
-  <Project Path="NLDMAP.API/NLDMAP.API.csproj" />
-  <Project Path="NLDMAP.Application/NLDMAP.Application.csproj" />
-  <Project Path="NLDMAP.Domain/NLDMAP.Domain.csproj" />
-  <Project Path="NLDMAP.Infrastructure/NLDMAP.Infrastructure.csproj" />
-</Solution>

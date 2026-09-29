@@ -1,76 +1,86 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using NLDMAP.Application.DTOs.Auth;
-using NLDMAP.Application.UseCases.Auth;
+using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using NLDMAP.Infrastructure.Identity;
 
+namespace NLDMAP.API.Controllers;
 
-namespace NLDMAP.API.Controllers
+[ApiController]
+[Route("api/auth")]
+public class AuthController(
+    UserManager<ApplicationUser> users,
+    SignInManager<ApplicationUser> signIn) : ControllerBase
 {
-    [ApiController] //validacion por parte de .NET los datos entrantes
-    [Route("api/[controller]")] //ruta base /api/Auth
-    public class AuthController : ControllerBase
+    [AllowAnonymous]
+    [HttpPost("login")]
+    [Consumes("application/json")]
+    public async Task<IActionResult> Login(
+        [FromBody] LoginRequest request)
     {
-        //Casos de uso
-        //private readonly IUserRepository _userRepository
-        //private readonly AuthenticateExternalUserUseCase _authenticateUseCase;
+        var user = await users.FindByEmailAsync(request.Email);
 
-        //Constructor
-        //public AuthController(AuthenticateExternalUserUseCase authenticateUseCase)
-        
-        public AuthController()
+        if (user is null)
         {
-           // _authenticateUseCase = authenticateUseCase;
-           //_userRepository = userRepository
+            return Unauthorized(new
+            {
+                mensaje = "No fue posible iniciar sesión."
+            });
         }
+
+        var result = await signIn.PasswordSignInAsync(
+            user,
+            request.Password,
+            isPersistent: false,
+            lockoutOnFailure: true);
+
+        if (!result.Succeeded)
+        {
+            return Unauthorized(new
+            {
+                mensaje = "No fue posible iniciar sesión."
+            });
+        }
+
+        return Ok(new { mensaje = "Sesión iniciada." });
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    public IActionResult Me()
+    {
+        return Ok(new
+        {
+            id = User.FindFirstValue(ClaimTypes.NameIdentifier),
+            email = User.FindFirstValue(ClaimTypes.Email),
+            roles = User.FindAll(ClaimTypes.Role)
+                .Select(claim => claim.Value)
+                .ToArray()
+        });
+    }
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromBody] object request)
+    {
+        await signIn.SignOutAsync();
+        return Ok(new { mensaje = "Sesión cerrada." });
+    }
     
-        // Endpoint al que se intenta acceder
-        [HttpGet("test-db")]
-        public IActionResult TestDatabase()
-        {
-            try
-            {
-                //Aqui ira llamada real a _userRepository
-                //var user = await _userRepository.CrearOObtenerAsync(...);
-                
-                //Wrapper estandar para interfaz
-                var response = new
-                {
-                    succesfull = true,
-                    message = "POSTGRESQL : OPERACION EXITOSA",
-                    data = new
-                    {
-                        id = Guid.NewGuid(),
-                        role = "Ciudadano",
-                        responseTimeMs = 15
-                    }
-                };
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    succesfull = false,
-                    message = $"Error en modulo 1: {ex.Message}",
-                });
-            }
-        }
+    [Authorize(Roles = "Administrador")]
+    [HttpPost("admin-check")]
+    public IActionResult AdminCheck()
+    {
+        return Ok(new { mensaje = "Acceso de administrador confirmado." });
+    }
+}
 
-        /* [HttpPost("external-login")]
-        public async Task<IActionResult> ExternalLogin([FromBody] ExternalAuthDto request)
-        {
-            try
-            {
-                //Validar caso de uso y registrar al ciudadano si es nuevo
-                var userEmail = await _authenticateUseCase.ExecuteAsync(request);
-                //Implementar logica de signin de openiddict
+public class LoginRequest
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
 
-                return Ok(new { Message = " Autenticación exitosa", Token = "JWT_AQUI" });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { Error = ex.Message });
-            }
-        }*/
-
-    }   
+    [Required]
+    public string Password { get; set; } = string.Empty;
 }

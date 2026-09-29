@@ -1,0 +1,28 @@
+﻿<Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+    <Found Context="routeData">
+    <AuthorizeRouteView RouteData="@routeData"
+                        DefaultLayout="@typeof(Layout.MainLayout)">
+        <Authorizing>
+            <p>Comprobando sesión...</p>
+        </Authorizing>
+
+        <NotAuthorized Context="authState">
+            @if (authState.User.Identity?.IsAuthenticated == true)
+            {
+                <h1>Acceso restringido</h1>
+                <p>Tu cuenta no tiene permisos para esta página.</p>
+            }
+            else
+            {
+                <p>
+                    Necesitas
+                    <a href="login">iniciar sesión</a>
+                    para continuar.
+                </p>
+            }
+        </NotAuthorized>
+    </AuthorizeRouteView>
+
+    <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+</Found>
+</Router>

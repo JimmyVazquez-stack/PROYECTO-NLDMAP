@@ -1,52 +1,81 @@
-using NLDMAP.Application;
-using NLDMAP.Infrastructure;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using NLDMAP.Infrastructure.Identity;
 using NLDMAP.Infrastructure.Persistence;
+using NLDMAP.API.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
-//registro de servicios
-//habilitar controladores
 builder.Services.AddControllers();
+builder.Services.AddOpenApi();
 
-//habilitar swagger
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+// Conexión para almacenar las cuentas del sistema.
+var connectionString =
+    builder.Configuration.GetConnectionString("IdentityConnection")
+    ?? throw new InvalidOperationException(
+        "Falta configurar ConnectionStrings:IdentityConnection.");
 
-// 1. Inyección de la infraestructura (Base de datos)
-builder.Services.AddPersistenceInfrastructure(builder.Configuration);
-builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
+// Usuarios, roles y autenticación mediante cookies.
+builder.Services
+    .AddIdentity<ApplicationUser, IdentityRole>(options =>
+    {
+        options.User.RequireUniqueEmail = true;
+        options.Password.RequiredLength = 10;
+    })
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
+
+builder.Services.AddAuthorization();
+
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+});
 
 builder.Services.AddCors(options =>
+{
+    options.AddPolicy("BlazorFrontend", policy =>
     {
-        options.AddPolicy("PoliticaFrontend", policy =>
-        {
-            policy.AllowAnyOrigin() //url exacta de blazor
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        });
+        policy.WithOrigins("https://localhost:7101")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
-
+});
 
 var app = builder.Build();
 
-//Middlewares
-//mostrar swagger solo en entorno desarrollo
+if (app.Environment.IsDevelopment() &&
+    app.Configuration.GetValue<bool>("SeedIdentity"))
+{
+    await IdentitySeeder.SeedAsync(
+        app.Services,
+        app.Configuration);
+
+    app.Logger.LogInformation(
+        "Roles y administrador inicial preparados correctamente.");
+
+    return;
+}
+
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.MapOpenApi();
 }
 
 app.UseHttpsRedirection();
-app.UseCors("PoliticaFrontend");
 
+app.UseRouting();
+app.UseCors("BlazorFrontend");
+
+app.UseAuthentication();
 app.UseAuthorization();
 
-//mapear rutas de controladores
 app.MapControllers();
-
-// 2. Endpoint de prueba rápida
-app.MapGet("/", () => "¡La API está corriendo y la Infraestructura se inyectó correctamente!");
 
 app.Run();

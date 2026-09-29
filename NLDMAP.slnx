@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/backend/">
+    <Project Path="backend/NLDMAP.API/NLDMAP.API.csproj" />
+    <Project Path="backend/NLDMAP.Application/NLDMAP.Application.csproj" />
+    <Project Path="backend/NLDMAP.Domain/NLDMAP.Domain.csproj" />
+    <Project Path="backend/NLDMAP.Infrastructure/NLDMAP.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/frontend/">
+    <Project Path="frontend/NLDMAP.Web/NLDMAP.Web.csproj" />
+  </Folder>
+</Solution>

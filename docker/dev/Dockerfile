@@ -73,7 +73,7 @@ COPY docker/dev/.p10k.zsh /root/.p10k.zsh
 RUN wget https://dot.net/v1/dotnet-install.sh -O /tmp/dotnet-install.sh \
     && chmod +x /tmp/dotnet-install.sh \
     && /tmp/dotnet-install.sh \
-        --channel 8.0 \
+        --channel 10.0 \
         --install-dir /usr/share/dotnet \
     && ln -s /usr/share/dotnet/dotnet /usr/local/bin/dotnet \
     && rm /tmp/dotnet-install.sh
