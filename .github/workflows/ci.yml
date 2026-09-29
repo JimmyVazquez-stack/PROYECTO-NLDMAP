@@ -1,0 +1,35 @@
+name: CI NLDMAP
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Compilar solucion
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v5
+      
+      - name: Preparar .NET
+        uses: actions/setup-dotnet@v5
+
+      - name: Restaurar herramientas
+        run: dotnet tool restore
+
+      - name: Restaurar dependencias
+        run: dotnet restore NLDMAP.slnx
+
+      - name: Compilar
+        run: dotnet build NLDMAP.slnx --configuration Release --no-restore
