@@ -4,6 +4,10 @@ using NLDMAP.Infrastructure.Identity;
 using NLDMAP.Infrastructure.Persistence;
 using NLDMAP.API.Identity;
 
+using System.Net;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -47,6 +51,34 @@ builder.Services.AddCors(options =>
               .AllowCredentials();
     });
 });
+
+// Reconocer las cabeceras enviadas por nuestro proxy.
+var proxyIp = builder.Configuration["ReverseProxy:KnownProxy"];
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor |
+        ForwardedHeaders.XForwardedProto;
+
+    options.ForwardLimit = 1;
+
+    if (!string.IsNullOrWhiteSpace(proxyIp))
+    {
+        options.KnownProxies.Add(IPAddress.Parse(proxyIp));
+    }
+});
+
+// En producción, esta carpeta estará en un volumen persistente.
+var keysPath = builder.Configuration["DataProtection:KeysPath"];
+
+if (!string.IsNullOrWhiteSpace(keysPath))
+{
+    builder.Services
+        .AddDataProtection()
+        .SetApplicationName("NLDMAP")
+        .PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+}
 
 var app = builder.Build();
 

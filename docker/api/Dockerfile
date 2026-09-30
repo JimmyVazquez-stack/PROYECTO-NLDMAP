@@ -19,3 +19,11 @@ ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
 
 COPY --from=build /out .
+
+RUN mkdir -p /var/lib/nldmap/keys \
+    && chown app:app /var/lib/nldmap/keys \
+    && chmod 700 /var/lib/nldmap/keys
+
+USER $APP_UID
+
+ENTRYPOINT ["dotnet", "NLDMAP.API.dll"]
