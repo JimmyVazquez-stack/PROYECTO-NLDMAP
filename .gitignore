@@ -1,21 +1,26 @@
-# Entornos de desarrollo
+# Editores y configuración personal
 .idea/
-*.sln.DotSettings.user
-*.user
-*.suo
+.vs/
 .vscode/
 *.code-workspace
+*.sln.DotSettings.user
+*.sln.docstates
+*.user
+*.suo
+*.userprefs
+*.userosscache
 
-# .NET
+# .NET: compilación, paquetes y pruebas
 bin/
 obj/
+publish/
+artifacts/
 TestResults/
 BenchmarkDotNet.Artifacts/
-*.userprefs
 *.nupkg
 *.snupkg
+*.trx
 project.lock.json
-artifacts/
 
 # Configuración local y secretos
 appsettings.Development.json
@@ -23,16 +28,20 @@ appsettings.Local.json
 secrets.json
 *.env
 .env
-.env.persistence
 .env.*
 !.env.example
 !.env.*.example
 
-# Logs y cobertura
+# Certificados privados
+*.pfx
+*.p12
+*.key
+
+# Logs, temporales y cobertura
 *.log
+*.tmp
 coverage/
 coverage.*
-TestResults/
 
 # Flutter / Dart
 build/
@@ -42,29 +51,40 @@ build/
 .flutter-plugins-dependencies
 *.iml
 
-# Android / iOS generado
+# Android / iOS
+android/.gradle/
+android/local.properties
 **/xcuserdata/
 **/*.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
-android/.gradle/
-android/app/build/
-android/local.properties
 
-# Dependencias y builds de otros frontends
+# Otros frontends
 node_modules/
 dist/
 .next/
 .nuxt/
 
-# Herramientas locales
+# Terraform
 .terraform/
 *.tfstate
 *.tfstate.*
 
-# Sistema operativo
+# Sistema operativo y archivos de respaldo del editor
 .DS_Store
 Thumbs.db
 *~
 *.swp
 
-#
+# Exclusión existente de documentación
 .docs
+
+# Respaldos locales del proyecto anterior
+/backend_anterior/
+/backend_respaldo/
+
+# Archivos locales de las pruebas de autenticación
+nldmap-cookies.txt
+nldmap-devcert.pem
+
+# Volcados de memoria de la API
+/backend/NLDMAP.API/core
+/backend/NLDMAP.API/core.[0-9]*

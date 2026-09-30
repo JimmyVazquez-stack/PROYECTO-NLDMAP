@@ -1,0 +1,35 @@
+{$SITE_DOMAIN} {
+    root * /srv
+    encode gzip
+
+    # Configuración pública que recibe Blazor en producción.
+    @configuration path /appsettings.json /appsettings.Production.json
+    handle @configuration {
+        header Content-Type application/json
+        header Cache-Control "no-store"
+
+        respond "{\"ApiBaseUrl\":\"https://{$SITE_DOMAIN}/\"}" 200
+    }
+
+    # Conserva /api en la petición enviada al backend.
+    @backend path /api /api/*
+    handle @backend {
+        reverse_proxy api:8080
+    }
+
+    # Recursos de Blazor: un archivo inexistente devuelve 404.
+    handle /_framework/* {
+        file_server {
+            precompressed br gzip
+        }
+    }
+
+    # Permite abrir directamente rutas como /login.
+    handle {
+        try_files {path} /index.html
+
+        file_server {
+            precompressed br gzip
+        }
+    }
+}

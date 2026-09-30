@@ -1,0 +1,56 @@
+name: CI NLDMAP
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Compilar solucion
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v5
+      
+      - name: Preparar .NET
+        uses: actions/setup-dotnet@v5
+
+      - name: Restaurar herramientas
+        run: dotnet tool restore
+
+      - name: Restaurar dependencias
+        run: dotnet restore NLDMAP.slnx
+
+      - name: Compilar
+        run: dotnet build NLDMAP.slnx --configuration Release --no-restore
+
+      - name: Construir imagen de la API
+        run: docker build -f docker/api/Dockerfile -t nldmap-api:ci .
+
+      - name: Construir imagen de Blazor
+        run : docker build -f docker/web/Dockerfile -t nldmap-web:ci .
+
+      - name: Validar configuracion de Caddy
+        run: docker run --rm -e SITE_DOMAIN=example.com nldmap-web:ci caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
+      - name: Construir y publicar imagen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/${{ matrix.component }} /Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/jimmyvazquez-stack/nldmap-${{ matrix.component }}:${{ github.sha }}
+          labels:  
+            org.opencontainers.image.source=https://github.com/JimmyVazquez-stack/PROYECTO-NLDMAP
+            org.opencontainers.image.revision=${{ github.sha }}
