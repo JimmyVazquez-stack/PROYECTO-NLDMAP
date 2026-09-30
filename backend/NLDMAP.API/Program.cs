@@ -82,15 +82,37 @@ if (!string.IsNullOrWhiteSpace(keysPath))
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment() &&
-    app.Configuration.GetValue<bool>("SeedIdentity"))
-{
-    await IdentitySeeder.SeedAsync(
-        app.Services,
-        app.Configuration);
+var migrateDatabase =
+    app.Configuration.GetValue<bool>("MigrateDatabase");
 
-    app.Logger.LogInformation(
-        "Roles y administrador inicial preparados correctamente.");
+var seedIdentity =
+    app.Configuration.GetValue<bool>("SeedIdentity");
+
+// Estos comandos realizan su tarea y terminan sin arrancar el servidor.
+if (migrateDatabase || seedIdentity)
+{
+    if (migrateDatabase)
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+
+        var db = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        await db.Database.MigrateAsync();
+
+        app.Logger.LogInformation(
+            "Migraciones aplicadas correctamente.");
+    }
+
+    if (seedIdentity)
+    {
+        await IdentitySeeder.SeedAsync(
+            app.Services,
+            app.Configuration);
+
+        app.Logger.LogInformation(
+            "Roles y administrador inicial preparados correctamente.");
+    }
 
     return;
 }
@@ -100,6 +122,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+app.UseForwardedHeaders();
 app.UseHttpsRedirection();
 
 app.UseRouting();
@@ -109,5 +132,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapGet("/api/health/live", () =>
+    Results.Ok(new { status = "ok" }))
+    .AllowAnonymous();
 
 app.Run();
