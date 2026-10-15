@@ -1,0 +1,42 @@
+@namespace NLDMAP.Web.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+@using NLDMAP.Web.Authentication
+@inject CookieAuthStateProvider Auth
+
+<div class="alert alert-info" role="status">
+    @if (!string.IsNullOrEmpty(Auth.ErrorMessage))
+    {
+        <p>@Auth.ErrorMessage</p>
+    }
+    else
+    {
+        <AuthorizeView>
+            <Authorized>
+                <p>Tu cuenta no tiene permiso para acceder a esta página.</p>
+            </Authorized>
+            <NotAuthorized>
+                <p>Inicia sesión para continuar.</p>
+                <a class="btn btn-primary" href="login">Ir al inicio de sesión</a>
+            </NotAuthorized>
+        </AuthorizeView>
+    }
+    <button type="button" class="btn btn-outline-secondary"
+            disabled="@busy" @onclick="RefreshAsync">Actualizar acceso</button>
+</div>
+
+@code {
+    private bool busy;
+
+    private async Task RefreshAsync()
+    {
+        busy = true;
+        try
+        {
+            await Auth.RefreshAsync();
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+}

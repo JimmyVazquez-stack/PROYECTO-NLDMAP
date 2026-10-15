@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using NLDMAP.Infrastructure.Identity;
 using NLDMAP.Infrastructure.Persistence;
 using NLDMAP.API.Identity;
+using NLDMAP.API.Authorization;
+using NLDMAP.API.Administration;
 
 using System.Net;
 using Microsoft.AspNetCore.DataProtection;
@@ -13,7 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-// Conexión para almacenar las cuentas del sistema.
+// Configure the database that stores Identity accounts.
 var connectionString =
     builder.Configuration.GetConnectionString("IdentityConnection")
     ?? throw new InvalidOperationException(
@@ -22,7 +24,7 @@ var connectionString =
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// Usuarios, roles y autenticación mediante cookies.
+// Configure users, roles, and cookie authentication.
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole>(options =>
     {
@@ -32,13 +34,18 @@ builder.Services
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
-builder.Services.AddAuthorization();
+builder.Services.AddPermissionAuthorization();
+builder.Services.AddApiAntiforgery();
+builder.Services.AddScoped<UserDetailsReader>();
+builder.Services.AddScoped<AccountCookieValidator>();
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.HttpOnly = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Events.OnValidatePrincipal = context => context.HttpContext.RequestServices
+        .GetRequiredService<AccountCookieValidator>().ValidateAsync(context);
 });
 
 builder.Services.AddCors(options =>
@@ -52,7 +59,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Reconocer las cabeceras enviadas por nuestro proxy.
+// Trust forwarded headers from the configured reverse proxy.
 var proxyIp = builder.Configuration["ReverseProxy:KnownProxy"];
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
@@ -69,7 +76,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     }
 });
 
-// En producción, esta carpeta estará en un volumen persistente.
+// Production deployments persist these keys in a mounted volume.
 var keysPath = builder.Configuration["DataProtection:KeysPath"];
 
 if (!string.IsNullOrWhiteSpace(keysPath))
@@ -88,7 +95,7 @@ var migrateDatabase =
 var seedIdentity =
     app.Configuration.GetValue<bool>("SeedIdentity");
 
-// Estos comandos realizan su tarea y terminan sin arrancar el servidor.
+// Initialization commands perform their task and exit without starting the server.
 if (migrateDatabase || seedIdentity)
 {
     if (migrateDatabase)

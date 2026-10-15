@@ -1,0 +1,227 @@
+@namespace NLDMAP.Web.Pages.Admin
+@using System.ComponentModel.DataAnnotations
+@using System.Net
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using NLDMAP.Web.Administration
+@using NLDMAP.Web.Administration.Caching
+@implements IDisposable
+@inject AdminDataStore Store
+
+<section class="card mt-4" aria-labelledby="account-status-heading">
+    <div class="card-body">
+        <h2 class="h4" id="account-status-heading">Estado de la cuenta</h2>
+        <p><span class="@(Account.IsActive ? "badge bg-success" : "badge bg-secondary")">
+            @(Account.IsActive ? "Activa" : "Desactivada")
+        </span></p>
+        <p>Una cuenta desactivada conserva sus datos y roles, pero no puede acceder. Al reactivarla deberá iniciar sesión nuevamente.</p>
+        @if (!string.IsNullOrEmpty(error))
+        {
+            <p class="alert alert-danger" role="alert">@error</p>
+        }
+        @if (!string.IsNullOrEmpty(success))
+        {
+            <p class="alert alert-success" role="status">@success</p>
+        }
+        @if (CanEdit)
+        {
+            @if (IsOwnAccount)
+            {
+                <p class="text-muted">Otra cuenta autorizada debe gestionar la desactivación de tu cuenta.</p>
+            }
+            @if (ProfileHasDraft)
+            {
+                <p class="text-muted">Guarda o descarta la edición del nombre antes de cambiar el estado.</p>
+            }
+            <EditForm Model="@form" OnValidSubmit="ChangeAsync">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+                <fieldset disabled="@(busy || Disabled || conflict || ProfileHasDraft || IsOwnAccount)">
+                    <div class="mb-3">
+                        <label class="form-label" for="account-status-reason">Motivo del cambio</label>
+                        <InputTextArea id="account-status-reason" class="form-control" rows="3" maxlength="1000"
+                                       @bind-Value="form.Reason" @bind-Value:after="NotifyDraftAsync" />
+                        <ValidationMessage For="@(() => form.Reason)" />
+                    </div>
+                    <button type="submit" class="@(Account.IsActive ? "btn btn-outline-danger" : "btn btn-outline-success")">
+                        @(Account.IsActive ? "Desactivar cuenta" : "Reactivar cuenta")
+                    </button>
+                </fieldset>
+            </EditForm>
+        }
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-4 mb-2">
+            <h3 class="h5 mb-0">Historial de estado</h3>
+            <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(busy || Disabled)"
+                    @onclick="ToggleHistoryAsync">@(showHistory ? "Ocultar historial de estado" : "Mostrar historial de estado")</button>
+        </div>
+        @if (busy) { <p role="status">Procesando...</p> }
+        @if (showHistory && history is not null)
+        {
+            <div class="table-responsive">
+                <table class="table table-striped align-middle">
+                    <caption>Cambios de estado registrados: @history.TotalCount.</caption>
+                    <thead><tr><th>Fecha</th><th>Realizado por</th><th>Cambio</th><th>Motivo</th></tr></thead>
+                    <tbody>
+                        @foreach (var entry in history.Items)
+                        {
+                            <tr @key="entry.Id">
+                                <td>@entry.OccurredAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>@entry.ActorDisplayName</td>
+                                <td>@(entry.NewIsActive ? "Reactivación" : "Desactivación")</td>
+                                <td>@entry.Reason</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (history.Items.Length == 0) { <p>Todavía no hay cambios de estado registrados.</p> }
+            <nav class="d-flex align-items-center gap-3" aria-label="Páginas del historial de estado">
+                <button type="button" class="btn btn-outline-secondary btn-sm"
+                        disabled="@(busy || Disabled || history.PageNumber <= 1)"
+                        @onclick="() => HistoryPageAsync(history.PageNumber - 1)">Anterior</button>
+                <span>Página @history.PageNumber de @Math.Max(1, history.TotalPages)</span>
+                <button type="button" class="btn btn-outline-secondary btn-sm"
+                        disabled="@(busy || Disabled || history.PageNumber >= history.TotalPages)"
+                        @onclick="() => HistoryPageAsync(history.PageNumber + 1)">Siguiente</button>
+            </nav>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public AccountDetails Account { get; set; } = null!;
+    [Parameter] public bool CanEdit { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool IsOwnAccount { get; set; }
+    [Parameter] public bool ProfileHasDraft { get; set; }
+    [Parameter] public long RefreshVersion { get; set; }
+    [Parameter] public EventCallback<AccountDetails> Changed { get; set; }
+    [Parameter] public EventCallback<bool> BusyChanged { get; set; }
+    [Parameter] public EventCallback<bool> DraftChanged { get; set; }
+
+    private readonly CancellationTokenSource lifetime = new();
+    private StatusInput form = new();
+    private AccountStatusHistory? history;
+    private string? initializedId;
+    private long initializedRefresh = -1;
+    private bool busy;
+    private bool disposed;
+    private bool conflict;
+    private bool showHistory;
+    private int pageNumber = 1;
+    private string? error;
+    private string? success;
+
+    protected override Task OnParametersSetAsync()
+    {
+        var first = initializedId != Account.Id;
+        var refresh = !first && initializedRefresh != RefreshVersion;
+        if (!first && !refresh) { return Task.CompletedTask; }
+        initializedId = Account.Id;
+        initializedRefresh = RefreshVersion;
+        var view = Store.GetDetailView(Account.Id);
+        showHistory = view.ShowStatusHistory;
+        pageNumber = view.StatusHistoryPage;
+        form = new();
+        history = null;
+        conflict = false;
+        error = success = null;
+        return RunAsync(async token =>
+        {
+            await NotifyDraftAsync();
+            if (showHistory) { await LoadHistoryAsync(pageNumber, refresh, token); }
+        });
+    }
+
+    private Task NotifyDraftAsync() => DraftChanged.InvokeAsync(!string.IsNullOrEmpty(form.Reason));
+
+    private Task ChangeAsync() => RunAsync(async token =>
+    {
+        if (!CanEdit || Disabled || ProfileHasDraft || IsOwnAccount || conflict) { return; }
+        var account = Account;
+        var saved = await Store.UpdateAccountStatusAsync(account, !account.IsActive, form.Reason, token);
+        token.ThrowIfCancellationRequested();
+        form = new();
+        conflict = false;
+        history = null;
+        pageNumber = 1;
+        Store.RememberStatusHistory(saved.Id, showHistory, pageNumber);
+        await NotifyDraftAsync();
+        await Changed.InvokeAsync(saved);
+        token.ThrowIfCancellationRequested();
+        success = saved.IsActive ? "Cuenta reactivada correctamente." : "Cuenta desactivada correctamente.";
+        if (showHistory) { await LoadHistoryAsync(1, false, token); }
+    });
+
+    private Task ToggleHistoryAsync() => RunAsync(async token =>
+    {
+        if (showHistory) { showHistory = false; }
+        else
+        {
+            if (history is null) { await LoadHistoryAsync(pageNumber, false, token); }
+            showHistory = true;
+        }
+        Store.RememberStatusHistory(Account.Id, showHistory, pageNumber);
+    });
+
+    private Task HistoryPageAsync(int page) => RunAsync(token => LoadHistoryAsync(page, false, token));
+
+    private async Task LoadHistoryAsync(int page, bool forceRefresh, CancellationToken token)
+    {
+        var loaded = await Store.GetAccountStatusHistoryAsync(Account.Id, page,
+            forceRefresh: forceRefresh, cancellationToken: token);
+        token.ThrowIfCancellationRequested();
+        if (loaded.ChangeVersion != Store.DataVersion) { throw new CacheInvalidatedException(); }
+        if (loaded.Value.TotalPages > 0 && page > loaded.Value.TotalPages)
+        {
+            loaded = await Store.GetAccountStatusHistoryAsync(Account.Id, loaded.Value.TotalPages,
+                forceRefresh: forceRefresh, cancellationToken: token);
+            token.ThrowIfCancellationRequested();
+            if (loaded.ChangeVersion != Store.DataVersion) { throw new CacheInvalidatedException(); }
+        }
+        history = loaded.Value;
+        pageNumber = history.PageNumber;
+        Store.RememberStatusHistory(Account.Id, showHistory, pageNumber);
+    }
+
+    private async Task RunAsync(Func<CancellationToken, Task> action)
+    {
+        if (disposed || busy) { return; }
+        busy = true;
+        error = success = null;
+        await BusyChanged.InvokeAsync(true);
+        try { await action(lifetime.Token); }
+        catch (ApiException exception)
+        {
+            if (disposed) { return; }
+            error = exception.Message;
+            if (exception.StatusCode == HttpStatusCode.Conflict || exception.StatusCode is null
+                || (int)exception.StatusCode.Value >= 500)
+            {
+                conflict = true;
+                error += " El motivo se conserva. Actualiza la ficha antes de repetir el cambio.";
+            }
+        }
+        catch (CacheInvalidatedException exception) { if (!disposed) { error = exception.Message; } }
+        catch (OperationCanceledException) { }
+        finally
+        {
+            busy = false;
+            if (!disposed) { await BusyChanged.InvokeAsync(false); }
+        }
+    }
+
+    public void Dispose()
+    {
+        disposed = true;
+        lifetime.Cancel();
+        lifetime.Dispose();
+    }
+
+    public sealed class StatusInput
+    {
+        [Required(ErrorMessage = "Escribe el motivo del cambio.")]
+        [StringLength(1000, ErrorMessage = "El motivo no debe superar los 1000 caracteres.")]
+        public string Reason { get; set; } = string.Empty;
+    }
+}

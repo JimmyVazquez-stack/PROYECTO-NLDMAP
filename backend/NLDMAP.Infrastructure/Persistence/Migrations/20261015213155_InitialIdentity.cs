@@ -31,6 +31,9 @@ namespace NLDMAP.Infrastructure.Persistence.Migrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "text", nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    FirstName = table.Column<string>(type: "text", nullable: false, defaultValue: ""),
+                    LastName = table.Column<string>(type: "text", nullable: false, defaultValue: ""),
                     UserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
@@ -49,6 +52,45 @@ namespace NLDMAP.Infrastructure.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_AspNetUsers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserAccountStatusAuditEntries",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    UserId = table.Column<string>(type: "character varying(450)", maxLength: 450, nullable: false),
+                    ActorUserId = table.Column<string>(type: "character varying(450)", maxLength: 450, nullable: false),
+                    ActorDisplayName = table.Column<string>(type: "text", nullable: false),
+                    OccurredAtUtc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    PreviousIsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    NewIsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    Reason = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserAccountStatusAuditEntries", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserProfileAuditEntries",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    UserId = table.Column<string>(type: "character varying(450)", maxLength: 450, nullable: false),
+                    ActorUserId = table.Column<string>(type: "character varying(450)", maxLength: 450, nullable: false),
+                    ActorDisplayName = table.Column<string>(type: "text", nullable: false),
+                    OccurredAtUtc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    PreviousFirstName = table.Column<string>(type: "text", nullable: false),
+                    PreviousLastName = table.Column<string>(type: "text", nullable: false),
+                    NewFirstName = table.Column<string>(type: "text", nullable: false),
+                    NewLastName = table.Column<string>(type: "text", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserProfileAuditEntries", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -186,13 +228,24 @@ namespace NLDMAP.Infrastructure.Persistence.Migrations
             migrationBuilder.CreateIndex(
                 name: "EmailIndex",
                 table: "AspNetUsers",
-                column: "NormalizedEmail");
+                column: "NormalizedEmail",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "UserNameIndex",
                 table: "AspNetUsers",
                 column: "NormalizedUserName",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserAccountStatusAuditEntries_UserId_Id",
+                table: "UserAccountStatusAuditEntries",
+                columns: new[] { "UserId", "Id" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserProfileAuditEntries_UserId_Id",
+                table: "UserProfileAuditEntries",
+                columns: new[] { "UserId", "Id" });
         }
 
         /// <inheritdoc />
@@ -212,6 +265,12 @@ namespace NLDMAP.Infrastructure.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "AspNetUserTokens");
+
+            migrationBuilder.DropTable(
+                name: "UserAccountStatusAuditEntries");
+
+            migrationBuilder.DropTable(
+                name: "UserProfileAuditEntries");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");

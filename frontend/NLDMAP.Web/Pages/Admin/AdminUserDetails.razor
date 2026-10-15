@@ -1,0 +1,503 @@
+@namespace NLDMAP.Web.Pages.Admin
+@page "/admin/users/{UserId}"
+@using System.ComponentModel.DataAnnotations
+@using System.Net
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using NLDMAP.Web.Administration
+@using NLDMAP.Web.Administration.Caching
+@using NLDMAP.Web.Authentication
+@using NLDMAP.Web.Shared
+@attribute [Authorize(Policy = AdminPermissions.UsersRead)]
+@implements IDisposable
+@inject AdminDataStore Store
+@inject CookieAuthStateProvider Auth
+
+<PageTitle>Detalle de usuario | NLDMAP</PageTitle>
+
+<AuthorizeView Policy="@AdminPermissions.UsersRead" Context="detailAccess">
+    <Authorized>
+        @if (!string.IsNullOrEmpty(Store.SynchronizationWarning))
+        {
+            <p class="alert alert-warning" role="status">@Store.SynchronizationWarning</p>
+        }
+        @if (hasExternalChanges)
+        {
+            <p class="alert alert-info" role="status">Hay cambios disponibles de otra pestaña. Tu edición se conserva; actualiza los datos antes de guardar.</p>
+        }
+        @if (!string.IsNullOrEmpty(Auth.CoordinationWarning))
+        {
+            <p class="alert alert-warning" role="status">@Auth.CoordinationWarning</p>
+        }
+        <NavLink href="admin/users" class="d-inline-block mb-3">Volver a usuarios</NavLink>
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+            <div>
+                <h1>Detalle de usuario</h1>
+                @if (details is not null)
+                {
+                    <p class="text-muted mb-0">@details.Email</p>
+                }
+                @if (loadedAt is not null)
+                {
+                    <small class="text-muted">Última consulta: @FormatDate(loadedAt.Value)</small>
+                }
+            </div>
+            <button type="button" class="btn btn-outline-secondary"
+                    disabled="@(busy || statusBusy)" @onclick="ReloadAsync">
+                @(IsDirty || conflict || statusHasDraft ? "Actualizar y descartar edición" : "Actualizar")
+            </button>
+        </div>
+
+        @if (busy)
+        {
+            <p role="status">Procesando...</p>
+        }
+        @if (!string.IsNullOrEmpty(error))
+        {
+            <div class="alert alert-danger" role="alert">@error</div>
+        }
+        @if (!string.IsNullOrEmpty(success))
+        {
+            <div class="alert alert-success" role="status">@success</div>
+        }
+
+        @if (details is not null)
+        {
+            <div class="row g-4">
+                <section class="col-lg-6" aria-labelledby="profile-heading">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h2 class="h4" id="profile-heading">Datos de la cuenta</h2>
+                            <EditForm Model="@input" OnValidSubmit="SaveAsync">
+                                <DataAnnotationsValidator />
+                                <ValidationSummary />
+                                <fieldset disabled="@(busy || statusBusy || conflict || !canEdit || hasExternalChanges)">
+                                    <div class="mb-3">
+                                        <label for="profile-first-name" class="form-label">Nombre</label>
+                                        <InputText id="profile-first-name" class="form-control"
+                                                   maxlength="200" autocomplete="given-name"
+                                                   @bind-Value="input.FirstName" />
+                                        <ValidationMessage For="@(() => input.FirstName)" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="profile-last-name" class="form-label">Apellidos</label>
+                                        <InputText id="profile-last-name" class="form-control"
+                                                   maxlength="200" autocomplete="family-name"
+                                                   @bind-Value="input.LastName" />
+                                        <ValidationMessage For="@(() => input.LastName)" />
+                                    </div>
+                                    @if (canEdit)
+                                    {
+                                        <button type="submit" class="btn btn-primary" disabled="@(!IsDirty)">
+                                            Guardar cambios
+                                        </button>
+                                    }
+                                </fieldset>
+                            </EditForm>
+                            @if (!canEdit)
+                            {
+                                <p class="text-muted mt-3 mb-0">Tu cuenta puede consultar estos datos.</p>
+                            }
+                        </div>
+                    </div>
+                </section>
+                <section class="col-lg-6" aria-labelledby="access-heading">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h2 class="h4" id="access-heading">Acceso y roles</h2>
+                            <dl class="mb-0">
+                                <dt>Correo</dt><dd>@details.Email</dd>
+                                <dt>Correo confirmado</dt><dd>@YesNo(details.EmailConfirmed)</dd>
+                                <dt>Verificación en dos pasos habilitada</dt><dd>@YesNo(details.TwoFactorEnabled)</dd>
+                                <dt>Bloqueo temporal</dt>
+                                <dd>
+                                    @(details.IsLockedOut ? "Bloqueado temporalmente" : "Sin bloqueo temporal")
+                                    @if (details.IsLockedOut && details.LockoutEnd is not null)
+                                    {
+                                        <span> hasta @FormatDate(details.LockoutEnd.Value)</span>
+                                    }
+                                </dd>
+                                <dt>Intentos fallidos acumulados</dt><dd>@details.AccessFailedCount</dd>
+                                <dt>Roles asignados</dt>
+                                <dd>@(details.Roles.Length == 0 ? "Sin roles asignados" : string.Join(", ", details.Roles))</dd>
+                                @if (details.RetiredRoles.Length > 0)
+                                {
+                                    <dt>Pendientes de revisión</dt>
+                                    <dd>@string.Join(", ", details.RetiredRoles)</dd>
+                                }
+                            </dl>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <AccountStatusPanel @key="details.Id" Account="@details" CanEdit="@canEdit"
+                                IsOwnAccount="@(details.Id == currentUserId)" ProfileHasDraft="@IsDirty"
+                                Disabled="@(busy || conflict || hasExternalChanges)" RefreshVersion="@statusRefreshVersion"
+                                Changed="OnStatusChanged" BusyChanged="value => statusBusy = value"
+                                DraftChanged="value => statusHasDraft = value" />
+
+            <section class="mt-4" aria-labelledby="history-heading">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                    <h2 class="h4 mb-0" id="history-heading">Historial de nombre y apellidos</h2>
+                    <button type="button" class="btn btn-outline-secondary"
+                            disabled="@(busy || statusBusy)" @onclick="ToggleHistoryAsync">
+                        @(showHistory ? "Ocultar historial" : "Mostrar historial")
+                    </button>
+                </div>
+                @if (showHistory && history is not null)
+                {
+                    <div class="table-responsive">
+                        <table class="table table-striped align-middle">
+                            <caption>Cambios registrados: @history.TotalCount.</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Fecha</th>
+                                    <th scope="col">Realizado por</th>
+                                    <th scope="col">Antes</th>
+                                    <th scope="col">Después</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var entry in history.Items)
+                                {
+                                    <tr @key="entry.Id">
+                                        <td>@FormatDate(entry.OccurredAtUtc)</td>
+                                        <td>@entry.ActorDisplayName</td>
+                                        <td>@entry.PreviousFirstName @entry.PreviousLastName</td>
+                                        <td>@entry.NewFirstName @entry.NewLastName</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    @if (history.Items.Length == 0)
+                    {
+                        <p>Todavía no hay cambios registrados.</p>
+                    }
+                    <nav class="d-flex align-items-center gap-3" aria-label="Páginas del historial">
+                        <button type="button" class="btn btn-outline-secondary"
+                                disabled="@(busy || statusBusy || history.PageNumber <= 1)"
+                                @onclick="() => HistoryPageAsync(history.PageNumber - 1)">Anterior</button>
+                        <span>Página @history.PageNumber de @Math.Max(1, history.TotalPages)</span>
+                        <button type="button" class="btn btn-outline-secondary"
+                                disabled="@(busy || statusBusy || history.PageNumber >= history.TotalPages)"
+                                @onclick="() => HistoryPageAsync(history.PageNumber + 1)">Siguiente</button>
+                    </nav>
+                }
+            </section>
+        }
+    </Authorized>
+    <NotAuthorized><AccessDenied /></NotAuthorized>
+</AuthorizeView>
+
+@code {
+    [Parameter]
+    public string UserId { get; set; } = string.Empty;
+
+    private readonly CancellationTokenSource lifetime = new();
+    private CancellationTokenSource? operation;
+    private int generation;
+    private bool disposed;
+    private string? requestedUserId;
+    private AccountDetails? details;
+    private ProfileHistory? history;
+    private ProfileInput input = new();
+    private DateTimeOffset? loadedAt;
+    private bool canEdit;
+    private bool busy;
+    private bool statusBusy;
+    private bool statusHasDraft;
+    private long statusRefreshVersion;
+    private string? currentUserId;
+    private bool conflict;
+    private bool hasExternalChanges;
+    private long loadedVersion = -1;
+    private bool showHistory;
+    private int historyPage = 1;
+    private string? error;
+    private string? success;
+
+    private bool IsDirty => details is not null
+        && (input.FirstName != details.FirstName || input.LastName != details.LastName);
+
+    protected override void OnInitialized() => Store.DataChanged += OnDataChanged;
+
+    protected override Task OnParametersSetAsync()
+    {
+        if (requestedUserId == UserId)
+        {
+            return Task.CompletedTask;
+        }
+
+        requestedUserId = UserId;
+        var userId = UserId;
+        return RunAsync(async token =>
+        {
+            details = null;
+            statusBusy = false;
+            statusHasDraft = false;
+            hasExternalChanges = false;
+            loadedVersion = -1;
+            history = null;
+            var view = Store.GetDetailView(userId);
+            showHistory = view.ShowHistory;
+            historyPage = view.HistoryPage;
+            loadedAt = null;
+            await LoadAsync(userId, forceRefresh: false, token);
+        }, replace: true);
+    }
+
+    private Task ReloadAsync() => RunAsync(token =>
+        LoadAsync(UserId, forceRefresh: true, token));
+
+    private async Task LoadAsync(string userId, bool forceRefresh, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        var state = await Auth.GetAuthenticationStateAsync();
+        token.ThrowIfCancellationRequested();
+        currentUserId = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        canEdit = state.User.HasClaim(AdminPermissions.ClaimType, AdminPermissions.UsersUpdate);
+
+        if (!state.User.HasClaim(AdminPermissions.ClaimType, AdminPermissions.UsersRead))
+        {
+            details = null;
+            history = null;
+            return;
+        }
+
+        var loaded = await Store.GetUserDetailsAsync(userId, forceRefresh, token);
+        token.ThrowIfCancellationRequested();
+        if (loaded.ChangeVersion != Store.DataVersion) { throw new CacheInvalidatedException(); }
+        SetDetails(loaded.Value);
+        loadedVersion = loaded.ChangeVersion;
+        hasExternalChanges = loadedVersion != Store.DataVersion;
+        loadedAt = loaded.LoadedAt;
+        if (forceRefresh) { statusRefreshVersion++; }
+        history = null;
+
+        if (showHistory)
+        {
+            await LoadHistoryAsync(userId, historyPage, forceRefresh, token);
+        }
+    }
+
+    private void SetDetails(AccountDetails account)
+    {
+        details = account;
+        input = new ProfileInput { FirstName = account.FirstName, LastName = account.LastName };
+        conflict = false;
+    }
+
+    private Task SaveAsync() => RunAsync(async token =>
+    {
+        var account = details;
+        if (account is null || !canEdit || conflict || !IsDirty || hasExternalChanges || statusBusy)
+        {
+            return;
+        }
+
+        AccountDetails saved;
+        try
+        {
+            saved = await Store.UpdateUserProfileAsync(account, input.FirstName, input.LastName, token);
+        }
+        catch (ApiException exception) when (exception.StatusCode is null || (int)exception.StatusCode.Value >= 500)
+        {
+            conflict = true;
+            throw;
+        }
+        token.ThrowIfCancellationRequested();
+        SetDetails(saved);
+        loadedAt = DateTimeOffset.Now;
+        success = "Datos guardados correctamente.";
+        history = null;
+        historyPage = 1;
+        Store.RememberDetail(saved.Id, showHistory, historyPage);
+
+        if (showHistory)
+        {
+            await LoadHistoryAsync(saved.Id, historyPage, false, token);
+        }
+    });
+
+    private Task ToggleHistoryAsync() => RunAsync(async token =>
+    {
+        if (details is null)
+        {
+            return;
+        }
+
+        if (showHistory)
+        {
+            showHistory = false;
+            Store.RememberDetail(details.Id, showHistory, historyPage);
+            return;
+        }
+
+        if (history is null)
+        {
+            await LoadHistoryAsync(details.Id, historyPage, false, token);
+        }
+        showHistory = true;
+        Store.RememberDetail(details.Id, showHistory, historyPage);
+    });
+
+    private Task HistoryPageAsync(int number) => RunAsync(async token =>
+    {
+        if (details is not null)
+        {
+            await LoadHistoryAsync(details.Id, number, false, token);
+        }
+    });
+
+    private async Task LoadHistoryAsync(string userId, int number, bool forceRefresh, CancellationToken token)
+    {
+        var loaded = await Store.GetUserHistoryAsync(
+            userId, number, forceRefresh: forceRefresh, cancellationToken: token);
+        token.ThrowIfCancellationRequested();
+        if (loaded.ChangeVersion != Store.DataVersion) { throw new CacheInvalidatedException(); }
+        if (loaded.Value.TotalPages > 0 && number > loaded.Value.TotalPages)
+        {
+            loaded = await Store.GetUserHistoryAsync(userId, loaded.Value.TotalPages,
+                forceRefresh: forceRefresh, cancellationToken: token);
+            token.ThrowIfCancellationRequested();
+            if (loaded.ChangeVersion != Store.DataVersion) { throw new CacheInvalidatedException(); }
+        }
+        history = loaded.Value;
+        historyPage = history.PageNumber;
+        Store.RememberDetail(userId, showHistory, historyPage);
+    }
+
+    private async Task RunAsync(Func<CancellationToken, Task> action, bool replace = false)
+    {
+        if (disposed || ((busy || statusBusy) && !replace))
+        {
+            return;
+        }
+
+        if (replace)
+        {
+            operation?.Cancel();
+        }
+
+        var current = ++generation;
+        using var request = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        operation = request;
+        busy = true;
+        error = null;
+        success = null;
+
+        try
+        {
+            await action(request.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            if (current == generation && !disposed && !request.IsCancellationRequested)
+            {
+                error = "La sesión cambió durante la operación. Actualiza la información.";
+            }
+        }
+        catch (CacheInvalidatedException exception)
+        {
+            if (current == generation && !disposed) { error = exception.Message; }
+        }
+        catch (ApiException exception)
+        {
+            if (current != generation || disposed)
+            {
+                return;
+            }
+
+            error = exception.Message;
+
+            if (exception.StatusCode == HttpStatusCode.Conflict)
+            {
+                conflict = true;
+                error += " Tu edición se conserva. Actualiza la cuenta para continuar.";
+            }
+            else if (conflict)
+            {
+                error += " El resultado del cambio es incierto. Actualiza antes de volver a guardar.";
+            }
+
+            if (exception.IsAccessDenied)
+            {
+                details = null;
+                history = null;
+                canEdit = false;
+            }
+        }
+        finally
+        {
+            if (current == generation)
+            {
+                busy = false;
+            }
+
+            if (ReferenceEquals(operation, request))
+            {
+                operation = null;
+            }
+        }
+    }
+
+    private static string YesNo(bool value) => value ? "Sí" : "No";
+    private void OnStatusChanged(AccountDetails saved)
+    {
+        SetDetails(saved);
+        loadedAt = DateTimeOffset.UtcNow;
+        error = success = null;
+    }
+    private static string FormatDate(DateTimeOffset value) =>
+        value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+
+    private void OnDataChanged() => _ = ShowDataChangeAsync(Store.DataVersion);
+
+    private async Task ShowDataChangeAsync(long version)
+    {
+        try
+        {
+            await InvokeAsync(() =>
+            {
+                if (!disposed && version > loadedVersion)
+                {
+                    hasExternalChanges = true;
+                    StateHasChanged();
+                }
+            });
+        }
+        catch (ObjectDisposedException) when (disposed) { }
+        catch (InvalidOperationException) when (disposed) { }
+    }
+
+    public void Dispose()
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        disposed = true;
+        Store.DataChanged -= OnDataChanged;
+        lifetime.Cancel();
+        lifetime.Dispose();
+    }
+
+    public sealed class ProfileInput
+    {
+        [Required(ErrorMessage = "Escribe el nombre.")]
+        [StringLength(200, ErrorMessage = "El nombre no debe superar los 200 caracteres.")]
+        public string FirstName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Escribe los apellidos.")]
+        [StringLength(200, ErrorMessage = "Los apellidos no deben superar los 200 caracteres.")]
+        public string LastName { get; set; } = string.Empty;
+    }
+}

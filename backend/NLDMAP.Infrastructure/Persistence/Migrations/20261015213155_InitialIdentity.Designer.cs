@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace NLDMAP.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260928214423_InitialIdentity")]
+    [Migration("20261015213155_InitialIdentity")]
     partial class InitialIdentity
     {
         /// <inheritdoc />
@@ -176,6 +176,23 @@ namespace NLDMAP.Infrastructure.Persistence.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("");
+
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("boolean");
 
@@ -212,6 +229,7 @@ namespace NLDMAP.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("NormalizedEmail")
+                        .IsUnique()
                         .HasDatabaseName("EmailIndex");
 
                     b.HasIndex("NormalizedUserName")
@@ -219,6 +237,97 @@ namespace NLDMAP.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("UserNameIndex");
 
                     b.ToTable("AspNetUsers", (string)null);
+                });
+
+            modelBuilder.Entity("NLDMAP.Infrastructure.Persistence.Auditing.UserAccountStatusAuditEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ActorDisplayName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ActorUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<bool>("NewIsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("PreviousIsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Id");
+
+                    b.ToTable("UserAccountStatusAuditEntries", (string)null);
+                });
+
+            modelBuilder.Entity("NLDMAP.Infrastructure.Persistence.Auditing.UserProfileAuditEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ActorDisplayName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ActorUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("NewFirstName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("NewLastName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PreviousFirstName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PreviousLastName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Id");
+
+                    b.ToTable("UserProfileAuditEntries", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

@@ -1,0 +1,442 @@
+@namespace NLDMAP.Web.Pages.Admin
+@page "/admin/users"
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
+@using NLDMAP.Web.Administration
+@using NLDMAP.Web.Administration.Caching
+@using NLDMAP.Web.Authentication
+@using NLDMAP.Web.Shared
+@attribute [Authorize(Policy = AdminPermissions.UsersRead)]
+@implements IDisposable
+@inject AdminDataStore Store
+@inject CookieAuthStateProvider Auth
+
+<PageTitle>Administración de usuarios | NLDMAP</PageTitle>
+
+<AuthorizeView Policy="@AdminPermissions.UsersRead" Context="usersAccess">
+    <Authorized>
+        <section aria-labelledby="users-heading">
+            @if (!string.IsNullOrEmpty(Store.SynchronizationWarning))
+            {
+                <p class="alert alert-warning" role="status">@Store.SynchronizationWarning</p>
+            }
+            @if (hasExternalChanges)
+            {
+                <p class="alert alert-info" role="status">Hay cambios disponibles de otra pestaña. Actualiza la información antes de administrar los roles.</p>
+            }
+            @if (!string.IsNullOrEmpty(Auth.CoordinationWarning))
+            {
+                <p class="alert alert-warning" role="status">@Auth.CoordinationWarning</p>
+            }
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <div>
+                    <h1 id="users-heading">Usuarios</h1>
+                    <p class="text-muted mb-0">Consulta las cuentas y administra sus roles.</p>
+                    @if (loadedAt is not null)
+                    {
+                        <small class="text-muted">Última consulta: @loadedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small>
+                    }
+                </div>
+                <button type="button" class="btn btn-outline-secondary"
+                        disabled="@busy" @onclick="ReloadAsync">Actualizar</button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(error))
+            {
+                <div class="alert alert-danger" role="alert">@error</div>
+            }
+            @if (!string.IsNullOrEmpty(success))
+            {
+                <div class="alert alert-success" role="status">@success</div>
+            }
+
+            <EditForm Model="filter" OnValidSubmit="SearchAsync">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+                <fieldset disabled="@busy">
+                    <div class="row g-2 align-items-end mb-3">
+                        <div class="col-md-7">
+                            <label for="account-search" class="form-label">Nombre, apellidos o correo</label>
+                            <InputText id="account-search" class="form-control"
+                                       maxlength="100" @bind-Value="filter.Search" />
+                        </div>
+                        <div class="col-md-3">
+                            <label for="account-page-size" class="form-label">Cuentas por página</label>
+                            <InputSelect id="account-page-size" class="form-select"
+                                         @bind-Value="filter.PageSize">
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </InputSelect>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100">Buscar</button>
+                        </div>
+                    </div>
+                </fieldset>
+            </EditForm>
+
+            @if (busy)
+            {
+                <p role="status">Procesando...</p>
+            }
+
+            <div class="table-responsive" aria-busy="@busy">
+                <table class="table table-striped align-middle">
+                    <caption>Listado de cuentas. Total de coincidencias: @accountsPage.TotalCount.</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Nombre</th>
+                            <th scope="col">Correo</th>
+                            <th scope="col">Roles</th>
+                            <th scope="col">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var account in accountsPage.Items)
+                        {
+                            <tr @key="account.Id">
+                                <td>@DisplayName(account)</td>
+                                <td>@account.Email</td>
+                                <td>
+                                    @(account.Roles.Length == 0 ? "Sin roles asignados" : string.Join(", ", account.Roles))
+                                    @if (account.RetiredRoles.Length > 0)
+                                    {
+                                        <div class="small text-warning">
+                                            Pendientes de revisión: @string.Join(", ", account.RetiredRoles)
+                                        </div>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <NavLink class="btn btn-sm btn-outline-secondary"
+                                                 href="@GetDetailsPath(account.Id)">Ver detalle</NavLink>
+                                        @if (canManageRoles)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-primary"
+                                                    disabled="@(busy || requiresReload || hasExternalChanges)" @onclick="() => SelectAccount(account)">
+                                                Gestionar roles
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (!busy && accountsPage.Items.Length == 0)
+            {
+                <p>No se encontraron cuentas con esta búsqueda.</p>
+            }
+
+            <nav class="d-flex flex-wrap align-items-center gap-3 my-3" aria-label="Paginación de usuarios">
+                <button type="button" class="btn btn-outline-secondary"
+                        disabled="@(busy || accountsPage.PageNumber <= 1)"
+                        @onclick="() => GoToPageAsync(accountsPage.PageNumber - 1)">Anterior</button>
+                <span>Página @accountsPage.PageNumber de @Math.Max(1, accountsPage.TotalPages)</span>
+                <button type="button" class="btn btn-outline-secondary"
+                        disabled="@(busy || accountsPage.PageNumber >= accountsPage.TotalPages)"
+                        @onclick="() => GoToPageAsync(accountsPage.PageNumber + 1)">Siguiente</button>
+            </nav>
+
+            @if (selectedAccount is not null && canManageRoles)
+            {
+                <section class="card mt-4" aria-labelledby="account-roles-heading">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div>
+                                <h2 id="account-roles-heading" class="h4">Roles de @DisplayName(selectedAccount)</h2>
+                                <p class="text-muted">@selectedAccount.Email</p>
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    disabled="@busy" @onclick="CloseEditor">Cerrar</button>
+                        </div>
+
+                        @if (selectedAccount.Id == currentUserId)
+                        {
+                            <p class="alert alert-info">
+                                Los roles de tu propia cuenta debe modificarlos otra cuenta autorizada.
+                            </p>
+                        }
+                        @if (roles.Length == 0)
+                        {
+                            <p>No hay roles disponibles. Actualiza la información.</p>
+                        }
+                        <ul class="list-group list-group-flush">
+                            @foreach (var role in roles)
+                            {
+                                var assigned = selectedAccount.Roles.Contains(role.Name, StringComparer.Ordinal);
+                                <li class="list-group-item d-flex justify-content-between align-items-center gap-3"
+                                    @key="role.Name">
+                                    <div>
+                                        <strong>@role.Name</strong>
+                                        <div class="small text-muted">@(assigned ? "Asignado" : "Sin asignar")</div>
+                                    </div>
+                                    <button type="button"
+                                            class="@(assigned ? "btn btn-outline-danger btn-sm" : "btn btn-outline-primary btn-sm")"
+                                            disabled="@(busy || hasExternalChanges || selectedAccount.Id == currentUserId)"
+                                            @onclick="() => ChangeRoleAsync(role.Name, assigned)">
+                                        @(assigned ? "Retirar" : "Asignar")
+                                    </button>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </section>
+            }
+        </section>
+    </Authorized>
+    <NotAuthorized><AccessDenied /></NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private readonly SearchInput filter = new();
+    private readonly CancellationTokenSource lifetime = new();
+    private CancellationToken requestToken;
+    private bool disposed;
+    private AccountPage accountsPage = new([], 1, 20, 0, 0);
+    private RoleDefinition[] roles = [];
+    private AccountSummary? selectedAccount;
+    private string activeSearch = string.Empty;
+    private int activePageSize = 20;
+    private string? currentUserId;
+    private bool canManageRoles;
+    private bool busy;
+    private bool requiresReload;
+    private bool hasExternalChanges;
+    private long loadedVersion = -1;
+    private DateTimeOffset? loadedAt;
+    private string? error;
+    private string? success;
+
+    protected override Task OnInitializedAsync()
+    {
+        Store.DataChanged += OnDataChanged;
+        requestToken = lifetime.Token;
+        return ExecuteAsync(async () =>
+        {
+            if (await ReadAccessAsync())
+            {
+                var view = Store.UsersView;
+                activeSearch = filter.Search = view.Search;
+                activePageSize = filter.PageSize = view.PageSize;
+                await LoadAsync(view.PageNumber);
+            }
+        });
+    }
+
+    private async Task<bool> ReadAccessAsync()
+    {
+        requestToken.ThrowIfCancellationRequested();
+        var state = await Auth.GetAuthenticationStateAsync();
+        requestToken.ThrowIfCancellationRequested();
+        currentUserId = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        canManageRoles = state.User.HasClaim(AdminPermissions.ClaimType, AdminPermissions.UsersAssignRoles)
+            && state.User.HasClaim(AdminPermissions.ClaimType, AdminPermissions.RolesRead);
+
+        if (!state.User.HasClaim(AdminPermissions.ClaimType, AdminPermissions.UsersRead))
+        {
+            accountsPage = new([], 1, activePageSize, 0, 0);
+            roles = [];
+            selectedAccount = null;
+            return false;
+        }
+
+        return true;
+    }
+
+    private Task ReloadAsync() => ExecuteAsync(async () =>
+    {
+        if (await ReadAccessAsync())
+        {
+            selectedAccount = null;
+            await LoadAsync(accountsPage.PageNumber, forceRefresh: true);
+        }
+    });
+
+    private Task SearchAsync() => ExecuteAsync(async () =>
+    {
+        activeSearch = (filter.Search ?? string.Empty).Trim();
+        activePageSize = filter.PageSize;
+        selectedAccount = null;
+        await LoadAsync(1);
+    });
+
+    private Task GoToPageAsync(int number) => ExecuteAsync(async () =>
+    {
+        selectedAccount = null;
+        await LoadAsync(number);
+    });
+
+    private async Task LoadAsync(int number, bool forceRefresh = false)
+    {
+        var loaded = await Store.GetUsersAsync(
+            number, activePageSize, activeSearch, forceRefresh, requestToken);
+        requestToken.ThrowIfCancellationRequested();
+        if (loaded.ChangeVersion != Store.DataVersion) { throw new CacheInvalidatedException(); }
+
+        if (loaded.Value.Items.Length == 0 && loaded.Value.TotalPages > 0 && number > loaded.Value.TotalPages)
+        {
+            loaded = await Store.GetUsersAsync(
+                loaded.Value.TotalPages, activePageSize, activeSearch, forceRefresh, requestToken);
+            requestToken.ThrowIfCancellationRequested();
+            if (loaded.ChangeVersion != Store.DataVersion) { throw new CacheInvalidatedException(); }
+        }
+
+        accountsPage = loaded.Value;
+        loadedAt = loaded.LoadedAt;
+        Store.RememberUsers(activeSearch, accountsPage.PageNumber, activePageSize);
+        loadedVersion = loaded.ChangeVersion;
+        if (canManageRoles)
+        {
+            var catalog = await Store.GetRolesAsync(forceRefresh, requestToken);
+            requestToken.ThrowIfCancellationRequested();
+            if (catalog.ChangeVersion != Store.DataVersion) { throw new CacheInvalidatedException(); }
+            roles = catalog.Value;
+            loadedVersion = Math.Min(loadedVersion, catalog.ChangeVersion);
+        }
+        else { roles = []; }
+        requiresReload = false;
+        hasExternalChanges = loadedVersion != Store.DataVersion;
+    }
+
+    private void SelectAccount(AccountSummary account)
+    {
+        if (requiresReload || hasExternalChanges) { return; }
+        selectedAccount = account;
+        error = null;
+        success = null;
+    }
+
+    private void CloseEditor() => selectedAccount = null;
+
+    private Task ChangeRoleAsync(string roleName, bool remove) => ExecuteAsync(async () =>
+    {
+        var account = selectedAccount;
+        if (account is null || account.Id == currentUserId || !canManageRoles || hasExternalChanges)
+        {
+            return;
+        }
+
+        try
+        {
+            await Store.ChangeRoleAsync(account.Id, roleName, remove, requestToken);
+        }
+        catch (ApiException exception) when (exception.StatusCode is null || (int)exception.StatusCode.Value >= 500)
+        {
+            requiresReload = true;
+            selectedAccount = null;
+            throw;
+        }
+        requestToken.ThrowIfCancellationRequested();
+        await LoadAsync(accountsPage.PageNumber);
+        requestToken.ThrowIfCancellationRequested();
+        selectedAccount = accountsPage.Items.FirstOrDefault(item => item.Id == account.Id);
+        success = remove ? "Rol retirado correctamente." : "Rol asignado correctamente.";
+    });
+
+    private async Task ExecuteAsync(Func<Task> action)
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        busy = true;
+        error = null;
+        success = null;
+
+        try
+        {
+            await action();
+        }
+        catch (ApiException exception)
+        {
+            if (disposed) { return; }
+            error = exception.Message;
+            if (requiresReload)
+            {
+                error += " El resultado del cambio es incierto. Actualiza antes de administrar sus roles.";
+            }
+
+            if (exception.IsAccessDenied)
+            {
+                canManageRoles = false;
+                accountsPage = new([], 1, activePageSize, 0, 0);
+                selectedAccount = null;
+                roles = [];
+            }
+        }
+        catch (CacheInvalidatedException exception)
+        {
+            if (!disposed) { error = exception.Message; }
+        }
+        catch (OperationCanceledException)
+        {
+            if (!disposed && !requestToken.IsCancellationRequested)
+            {
+                error = "La sesión cambió durante la operación. Actualiza la información.";
+            }
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private static string GetDetailsPath(string userId) =>
+        "admin/users/" + Uri.EscapeDataString(userId);
+
+    private static string DisplayName(AccountSummary account)
+    {
+        var name = (account.FirstName + " " + account.LastName).Trim();
+        return string.IsNullOrEmpty(name) ? account.Email : name;
+    }
+
+    private void OnDataChanged() => _ = ShowDataChangeAsync(Store.DataVersion);
+
+    private async Task ShowDataChangeAsync(long version)
+    {
+        try
+        {
+            await InvokeAsync(() =>
+            {
+                if (!disposed && version > loadedVersion)
+                {
+                    hasExternalChanges = true;
+                    StateHasChanged();
+                }
+            });
+        }
+        catch (ObjectDisposedException) when (disposed) { }
+        catch (InvalidOperationException) when (disposed) { }
+    }
+
+    public void Dispose()
+    {
+        if (disposed)
+        {
+            return;
+        }
+        disposed = true;
+        Store.DataChanged -= OnDataChanged;
+        lifetime.Cancel();
+        lifetime.Dispose();
+    }
+
+    public sealed class SearchInput
+    {
+        [StringLength(100, ErrorMessage = "La búsqueda no debe superar los 100 caracteres.")]
+        public string Search { get; set; } = string.Empty;
+
+        [Range(1, 100, ErrorMessage = "El tamaño de página debe estar entre 1 y 100.")]
+        public int PageSize { get; set; } = 20;
+    }
+}

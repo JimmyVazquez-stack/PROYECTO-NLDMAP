@@ -60,6 +60,9 @@ android/local.properties
 # Otros frontends
 node_modules/
 dist/
+!frontend/NLDMAP.Web/wwwroot/lib/bootstrap/dist/
+!frontend/NLDMAP.Web/wwwroot/lib/bootstrap/dist/css/
+!frontend/NLDMAP.Web/wwwroot/lib/bootstrap/dist/css/bootstrap.min.css
 .next/
 .nuxt/
 
@@ -88,3 +91,5 @@ nldmap-devcert.pem
 # Volcados de memoria de la API
 /backend/NLDMAP.API/core
 /backend/NLDMAP.API/core.[0-9]*
+/frontend/NLDMAP.Web/core
+/frontend/NLDMAP.Web/core.[0-9]*

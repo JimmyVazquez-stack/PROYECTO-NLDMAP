@@ -1,0 +1,47 @@
+.nav-item {
+    font-size: 0.9rem;
+    padding-bottom: 0.5rem;
+}
+
+.nav-item:last-of-type {
+    padding-bottom: 1rem;
+}
+
+/* NavLink renders its anchor in a child component. */
+.nav-item ::deep .nav-link {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 3rem;
+    padding: 0 1rem;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: #d7d7d7;
+    font: inherit;
+    line-height: 3rem;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.nav-item ::deep .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.37);
+    color: #fff;
+}
+
+.nav-item ::deep .nav-link:hover:not(:disabled) {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.nav-item ::deep .nav-link:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: -2px;
+}
+
+.nav-item ::deep .nav-link:disabled {
+    opacity: 0.65;
+    cursor: wait;
+}
+

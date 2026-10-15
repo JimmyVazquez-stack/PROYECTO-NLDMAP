@@ -1,0 +1,333 @@
+@namespace NLDMAP.Web.Pages.Admin
+@page "/admin/roles"
+@using System.Net
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using NLDMAP.Web.Administration
+@using NLDMAP.Web.Administration.Caching
+@using NLDMAP.Web.Authentication
+@using NLDMAP.Web.Shared
+@attribute [Authorize(Policy = AdminPermissions.RolesRead)]
+@implements IDisposable
+@inject AdminDataStore Store
+@inject CookieAuthStateProvider Auth
+
+<PageTitle>Roles y permisos | NLDMAP</PageTitle>
+
+<AuthorizeView Policy="@AdminPermissions.RolesRead" Context="rolesAccess">
+    <Authorized>
+        <section aria-labelledby="roles-heading">
+            @if (!string.IsNullOrEmpty(Store.SynchronizationWarning))
+            {
+                <p class="alert alert-warning" role="status">@Store.SynchronizationWarning</p>
+            }
+            @if (hasExternalChanges)
+            {
+                <p class="alert alert-info" role="status">Hay cambios disponibles de otra pestaña. Tu selección se conserva; actualiza la configuración antes de guardar.</p>
+            }
+            @if (!string.IsNullOrEmpty(Auth.CoordinationWarning))
+            {
+                <p class="alert alert-warning" role="status">@Auth.CoordinationWarning</p>
+            }
+            <h1 id="roles-heading">Roles y permisos</h1>
+            <p class="text-muted">Configura las acciones disponibles para cada rol.</p>
+            @if (loadedAt is not null)
+            {
+                <p class="small text-muted">Última consulta: @loadedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+            }
+
+            @if (!string.IsNullOrEmpty(error))
+            {
+                <div class="alert alert-danger" role="alert">@error</div>
+            }
+            @if (!string.IsNullOrEmpty(success))
+            {
+                <div class="alert alert-success" role="status">@success</div>
+            }
+            @if (busy)
+            {
+                <p role="status">Procesando...</p>
+            }
+
+            <div class="d-flex flex-wrap gap-3 align-items-end mb-4">
+                <div>
+                    <label for="role-selection" class="form-label">Rol</label>
+                    <select id="role-selection" class="form-select" value="@selectedRole?.Name"
+                            disabled="@(busy || IsDirty)" @onchange="SelectRole">
+                        @foreach (var role in roles)
+                        {
+                            <option value="@role.Name">@role.Name</option>
+                        }
+                    </select>
+                </div>
+                <button type="button" class="btn btn-outline-secondary"
+                        disabled="@busy" @onclick="ReloadAsync">
+                    @(IsDirty || conflict ? "Recargar y descartar cambios" : "Actualizar")
+                </button>
+            </div>
+
+            @if (selectedRole is not null)
+            {
+                <section class="card" aria-labelledby="permission-heading">
+                    <div class="card-body">
+                        <h2 id="permission-heading" class="h4">@selectedRole.Name</h2>
+                        <p>Los cambios se aplican a todas las cuentas que tienen este rol.</p>
+
+                        @if (IsTechnicalRole)
+                        {
+                            <p class="alert alert-info">
+                                El administrador del sistema conserva su base de ocho permisos técnicos.
+                            </p>
+                        }
+                        else if (!canEdit)
+                        {
+                            <p class="text-muted">Tu cuenta puede consultar esta configuración.</p>
+                        }
+
+                        <fieldset disabled="@(busy || !canEdit || IsTechnicalRole || conflict || hasExternalChanges)">
+                            <legend class="h6">Acciones permitidas</legend>
+                            @foreach (var permission in selectedRole.AllowedPermissions)
+                            {
+                                <label class="d-flex gap-2 align-items-start border-bottom py-3" @key="permission">
+                                    <input type="checkbox" class="form-check-input"
+                                           checked="@draft.Contains(permission)"
+                                           @onchange="args => ChangePermission(permission, args)" />
+                                    <span>@PermissionLabels.Get(permission)</span>
+                                </label>
+                            }
+                        </fieldset>
+
+                        @if (!IsTechnicalRole && canEdit)
+                        {
+                            <div class="d-flex flex-wrap align-items-center gap-3 mt-4">
+                                <button type="button" class="btn btn-primary"
+                                        disabled="@(busy || !IsDirty || conflict || hasExternalChanges)" @onclick="SaveAsync">
+                                    Guardar permisos
+                                </button>
+                                @if (IsDirty)
+                                {
+                                    <span class="text-muted" role="status">Hay cambios sin guardar.</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                </section>
+            }
+            else if (!busy)
+            {
+                <p>No hay roles disponibles. Actualiza la información.</p>
+            }
+        </section>
+    </Authorized>
+    <NotAuthorized><AccessDenied /></NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private readonly CancellationTokenSource lifetime = new();
+    private CancellationToken requestToken;
+    private bool disposed;
+    private RoleDefinition[] roles = [];
+    private RoleDefinition? selectedRole;
+    private HashSet<string> draft = new(StringComparer.Ordinal);
+    private bool canEdit;
+    private bool busy;
+    private DateTimeOffset? loadedAt;
+    private bool conflict;
+    private bool hasExternalChanges;
+    private long loadedVersion = -1;
+    private string? error;
+    private string? success;
+
+    private bool IsTechnicalRole => selectedRole?.Name == AdminPermissions.SystemAdministratorRole;
+    private bool IsDirty => selectedRole is not null && !draft.SetEquals(selectedRole.Permissions);
+
+    protected override Task OnInitializedAsync()
+    {
+        Store.DataChanged += OnDataChanged;
+        requestToken = lifetime.Token;
+        return ExecuteAsync(() => LoadAsync(forceRefresh: false));
+    }
+
+    private Task ReloadAsync() => ExecuteAsync(() => LoadAsync(forceRefresh: true));
+
+    private async Task LoadAsync(bool forceRefresh)
+    {
+        requestToken.ThrowIfCancellationRequested();
+        var state = await Auth.GetAuthenticationStateAsync();
+        requestToken.ThrowIfCancellationRequested();
+        canEdit = state.User.HasClaim(AdminPermissions.ClaimType, AdminPermissions.RolesUpdatePermissions);
+
+        if (!state.User.HasClaim(AdminPermissions.ClaimType, AdminPermissions.RolesRead))
+        {
+            roles = [];
+            selectedRole = null;
+            draft.Clear();
+            return;
+        }
+
+        var name = selectedRole?.Name ?? Store.SelectedRoleName;
+        var loaded = await Store.GetRolesAsync(forceRefresh, requestToken);
+        requestToken.ThrowIfCancellationRequested();
+        if (loaded.ChangeVersion != Store.DataVersion) { throw new CacheInvalidatedException(); }
+        roles = loaded.Value;
+        loadedAt = loaded.LoadedAt;
+        SetRole(roles.FirstOrDefault(role => role.Name == name) ?? roles.FirstOrDefault());
+        loadedVersion = loaded.ChangeVersion;
+        hasExternalChanges = loadedVersion != Store.DataVersion;
+    }
+
+    private void SelectRole(ChangeEventArgs args)
+    {
+        if (busy || IsDirty)
+        {
+            return;
+        }
+
+        SetRole(roles.FirstOrDefault(role => role.Name == args.Value?.ToString()));
+        error = null;
+        success = null;
+    }
+
+    private void SetRole(RoleDefinition? role)
+    {
+        selectedRole = role;
+        Store.RememberRole(role?.Name);
+        draft = role is null
+            ? new HashSet<string>(StringComparer.Ordinal)
+            : role.Permissions.ToHashSet(StringComparer.Ordinal);
+        conflict = false;
+    }
+
+    private void ChangePermission(string permission, ChangeEventArgs args)
+    {
+        if (busy || !canEdit || IsTechnicalRole || conflict || hasExternalChanges)
+        {
+            return;
+        }
+
+        if (args.Value is true)
+        {
+            draft.Add(permission);
+        }
+        else
+        {
+            draft.Remove(permission);
+        }
+
+        success = null;
+    }
+
+    private Task SaveAsync() => ExecuteAsync(async () =>
+    {
+        var role = selectedRole;
+        if (role is null || !canEdit || IsTechnicalRole || conflict || !IsDirty || hasExternalChanges)
+        {
+            return;
+        }
+
+        // A failed save keeps the draft and version so the user can review it.
+        RoleDefinition saved;
+        try
+        {
+            saved = await Store.UpdatePermissionsAsync(role, draft, requestToken);
+        }
+        catch (ApiException exception) when (exception.StatusCode is null || (int)exception.StatusCode.Value >= 500)
+        {
+            conflict = true;
+            throw;
+        }
+        requestToken.ThrowIfCancellationRequested();
+        roles = roles.Select(item => item.Name == saved.Name ? saved : item).ToArray();
+        SetRole(saved);
+        success = "Permisos actualizados correctamente.";
+        loadedAt = DateTimeOffset.UtcNow;
+    });
+
+    private async Task ExecuteAsync(Func<Task> action)
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        busy = true;
+        error = null;
+        success = null;
+
+        try
+        {
+            await action();
+        }
+        catch (ApiException exception)
+        {
+            if (disposed) { return; }
+            error = exception.Message;
+
+            if (exception.StatusCode == HttpStatusCode.Conflict)
+            {
+                conflict = true;
+                error += " Recarga la configuración para continuar; tu selección se conserva hasta entonces.";
+            }
+            else if (conflict)
+            {
+                error += " El resultado del cambio es incierto. Actualiza antes de volver a guardar.";
+            }
+
+            if (exception.IsAccessDenied)
+            {
+                canEdit = false;
+                roles = [];
+                selectedRole = null;
+                draft.Clear();
+            }
+        }
+        catch (CacheInvalidatedException exception)
+        {
+            if (!disposed) { error = exception.Message; }
+        }
+        catch (OperationCanceledException)
+        {
+            if (!disposed && !requestToken.IsCancellationRequested)
+            {
+                error = "La sesión cambió durante la operación. Actualiza la información.";
+            }
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        if (disposed)
+        {
+            return;
+        }
+        disposed = true;
+        Store.DataChanged -= OnDataChanged;
+        lifetime.Cancel();
+        lifetime.Dispose();
+    }
+
+    private void OnDataChanged() => _ = ShowDataChangeAsync(Store.DataVersion);
+
+    private async Task ShowDataChangeAsync(long version)
+    {
+        try
+        {
+            await InvokeAsync(() =>
+            {
+                if (!disposed && version > loadedVersion)
+                {
+                    hasExternalChanges = true;
+                    StateHasChanged();
+                }
+            });
+        }
+        catch (ObjectDisposedException) when (disposed) { }
+        catch (InvalidOperationException) when (disposed) { }
+    }
+}

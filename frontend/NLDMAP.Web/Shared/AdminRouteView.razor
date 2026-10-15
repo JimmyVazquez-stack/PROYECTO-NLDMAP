@@ -1,0 +1,20 @@
+@namespace NLDMAP.Web.Shared
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Authorization
+
+<AuthorizeRouteView RouteData="@RouteData" DefaultLayout="@DefaultLayout">
+    <Authorizing>
+        <p role="status">Comprobando sesión...</p>
+    </Authorizing>
+    <NotAuthorized>
+        <AccessDenied />
+    </NotAuthorized>
+</AuthorizeRouteView>
+
+@code {
+    [Parameter, EditorRequired]
+    public RouteData RouteData { get; set; } = default!;
+
+    [Parameter]
+    public Type? DefaultLayout { get; set; }
+}
