@@ -1,0 +1,27 @@
+﻿@page "/administracion"
+@rendermode InteractiveServer
+@layout AdministrationLayout
+@attribute [Authorize(Policy = PermissionNames.Access)]
+@inherits AdminPageBase
+<PageTitle>Administración | NLDMAP</PageTitle>
+<p class="text-uppercase small text-body-secondary mb-1">NLDMAP</p>
+<h1 class="h2 mb-2">Administración del sistema</h1>
+<p class="text-body-secondary mb-4">Gestiona las cuentas, los accesos y el historial de cambios.</p>
+<OperationStatus Error="@Error" Notice="@Notice" Busy="Busy" />
+@if (Access is not null)
+{
+    <p class="small mb-4">Sesión: <strong>@Access.Name</strong></p>
+    <div class="row g-3">
+        @foreach (var module in modules.Where(m => Access.Allows(m.Permission)))
+        {
+            <div class="col-sm-6 col-xl-3"><a href="@module.Url" class="card h-100 text-decoration-none shadow-sm"><div class="card-body p-4"><h2 class="h5">@module.Name</h2><p class="text-body-secondary mb-0">@module.Description</p></div></a></div>
+        }
+    </div>
+}
+@code {
+    private readonly (string Name, string Description, string Url, string Permission)[] modules = [
+        ("Usuarios", "Consulta perfiles, estados y roles.", "administracion/usuarios", PermissionNames.UsersRead),
+        ("Roles y permisos", "Define qué puede realizar cada rol.", "administracion/roles", PermissionNames.RolesRead),
+        ("Auditoría", "Revisa responsables y cambios registrados.", "administracion/auditoria", PermissionNames.AuditRead),
+        ("Invitaciones", "Incorpora personal con enlaces temporales.", "administracion/invitaciones", PermissionNames.InvitationsManage)];
+}

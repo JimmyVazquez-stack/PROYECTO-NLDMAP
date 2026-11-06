@@ -1,0 +1,97 @@
+﻿@inherits LayoutComponentBase
+<div class="container-fluid">
+    <div class="row min-vh-100">
+        <aside class="col-md-3 col-xl-2 bg-dark text-white p-3 p-lg-4">
+            <a class="text-white text-decoration-none fs-4 fw-bold" href="administracion">NLDMAP</a>
+            <hr />
+            <nav class="nav nav-pills flex-row flex-md-column gap-1" aria-label="Administración">
+                <NavLink class="nav-link text-white" href="administracion" Match="NavLinkMatch.All">Inicio</NavLink>
+                <AuthorizeView Policy="@PermissionNames.UsersRead"><NavLink class="nav-link text-white" href="administracion/usuarios">Usuarios</NavLink></AuthorizeView>
+                <AuthorizeView Policy="@PermissionNames.RolesRead"><NavLink class="nav-link text-white" href="administracion/roles">Roles y permisos</NavLink></AuthorizeView>
+                <AuthorizeView Policy="@PermissionNames.AuditRead"><NavLink class="nav-link text-white" href="administracion/auditoria">Auditoría</NavLink></AuthorizeView>
+                <AuthorizeView Policy="@PermissionNames.InvitationsManage"><NavLink class="nav-link text-white" href="administracion/invitaciones">Invitaciones</NavLink></AuthorizeView>
+            </nav>
+        </aside>
+<section class="col-md-9 col-xl-10 p-0 d-flex flex-column">
+
+    <header class="bg-white border-bottom px-3 px-lg-4 py-3
+                   d-flex align-items-center justify-content-between gap-3">
+
+        <span class="fw-semibold">Administración</span>
+
+        <div class="d-flex align-items-center gap-2"
+             role="group"
+             aria-label="Acciones de la cuenta">
+
+            <button type="button"
+                    class="btn"
+                    title="Perfil: próximamente"
+                    aria-label="Ver perfil, próximamente"
+                    disabled>
+                <svg width="20" height="20" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor"
+                     stroke-width="1.8" aria-hidden="true">
+                    <circle cx="12" cy="8" r="4" />
+                    <path d="M4 21v-2a8 8 0 0 1 16 0v2" />
+                </svg>
+            </button>
+
+            <button type="button"
+                    class="btn"
+                    title="Notificaciones: próximamente"
+                    aria-label="Ver notificaciones, próximamente"
+                    disabled>
+                <svg width="20" height="20" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor"
+                     stroke-width="1.8" aria-hidden="true">
+                    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+                    <path d="M10 21h4" />
+                </svg>
+            </button>
+
+            <form method="post"
+                  action="/Account/Logout"
+                  data-enhance="false"
+                  class="m-0">
+
+                <AntiforgeryToken />
+
+                <button type="submit"
+                        class="btn"
+                        color="ButtonColor.secondary"
+                        title="Cerrar sesión"
+                        aria-label="Cerrar sesión">
+                    <svg width="20" height="20" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor"
+                         stroke-width="1.8" aria-hidden="true">
+                        <path d="M9 4H4v16h5" />
+                        <path d="M9 12h12m-5-5 5 5-5 5" />
+                    </svg>
+
+                    <span class="d-none d-sm-inline">Cerrar sesión</span>
+                </button>
+            </form>
+
+        </div>
+    </header>
+
+    <main class="flex-grow-1 bg-body-tertiary p-3 p-lg-5">
+        <ErrorBoundary>
+            <ChildContent>
+                @Body
+            </ChildContent>
+
+            <ErrorContent>
+                <div class="alert alert-danger" role="alert">
+                    Ocurrió un error.
+                    <a href="/administracion" data-enhance-nav="false">
+                        Recargar administración
+                    </a>
+                </div>
+            </ErrorContent>
+        </ErrorBoundary>
+    </main>
+
+</section>
+    </div>
+</div>

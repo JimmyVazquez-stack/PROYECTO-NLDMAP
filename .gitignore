@@ -1,0 +1,51 @@
+# Resultados de compilación de .NET
+[Bb]in/
+[Oo]bj/
+artifacts/
+publish/
+
+# Configuración local de Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Configuración personal de otros editores
+.idea/
+
+# Resultados de pruebas y cobertura
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# Paquetes y dependencias
+packages/
+node_modules/
+
+# Configuración local y variables de entorno
+.env
+.env.*
+!.env.example
+!.env.sample
+appsettings.Local.json
+appsettings.*.Local.json
+
+# Certificados y claves privadas
+*.pfx
+*.p12
+*.key
+
+# Registros y volcados de memoria
+logs/
+*.log
+core
+core.*
+*.dmp
+
+# Archivos temporales del sistema
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak

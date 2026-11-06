@@ -1,0 +1,84 @@
+﻿@page "/"
+@page "/inicio"
+@layout MainLayout
+@attribute [AllowAnonymous]
+
+<PageTitle>Inicio | Búsqueda Tlaxcala</PageTitle>
+
+<div class="public-home">
+    <header class="border-bottom bg-white">
+        <nav class="container d-flex flex-wrap align-items-center
+            justify-content-between gap-3 py-4"
+             aria-label="Navegación pública">
+
+            <a class="public-brand" href="/">Búsqueda Tlaxcala</a>
+
+            <div class="d-flex gap-4">
+                <a class="public-link" href="/">Inicio</a>
+                <a class="public-link" href="#quienes-somos">
+                    Quiénes somos
+                </a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="public-hero">
+            <div class="container py-5">
+                <div class="row align-items-center g-4 py-lg-5">
+                    <div class="col-lg-8">
+                        <p class="public-eyebrow">
+                            INFORMACIÓN PARA LA CIUDADANÍA
+                        </p>
+
+                        <h1 class="display-4 fw-bold mb-4">
+                            Un espacio para acercarnos
+                            a la información.
+                        </h1>
+
+                        <p class="lead mb-4">
+                            Conoce Búsqueda Tlaxcala y el propósito
+                            de este espacio de consulta pública.
+                        </p>
+
+                        <a class="btn btn-dark btn-lg"
+                           href="#quienes-somos">
+                            Conoce el proyecto
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="quienes-somos" class="container py-5">
+            <div class="row g-4 py-lg-4">
+                <div class="col-lg-4">
+                    <p class="public-eyebrow">EL PROYECTO</p>
+                    <h2 class="fw-bold">Quiénes somos</h2>
+                </div>
+
+                <div class="col-lg-8">
+                    <p class="fs-5">
+                        Búsqueda Tlaxcala es un proyecto orientado
+                        a reunir información relacionada con la
+                        búsqueda de personas en Tlaxcala.
+                    </p>
+
+                    <p class="text-body-secondary">
+                        Estamos construyendo un espacio que permita
+                        acercar información clara y accesible
+                        a la ciudadanía.
+                    </p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="border-top bg-white">
+        <div class="container d-flex flex-wrap
+            justify-content-between gap-2 py-4">
+            <strong>Búsqueda Tlaxcala</strong>
+            <span class="text-body-secondary">Tlaxcala, México</span>
+        </div>
+    </footer>
+</div>

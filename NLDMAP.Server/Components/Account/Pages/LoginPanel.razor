@@ -1,0 +1,74 @@
+﻿<MudThemeProvider IsDarkMode="false" />
+<MudPopoverProvider />
+
+<MudStack AlignItems="MudBlazor.AlignItems.Center" Justify="MudBlazor.Justify.Center"
+          Class="pa-4" Style="min-height: 100dvh; background: var(--mud-palette-background);">
+    <MudContainer MaxWidth="MudBlazor.MaxWidth.ExtraSmall">
+        <MudPaper Elevation="3" Class="pa-6">
+            <MudStack Spacing="3">
+                <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings"
+                         Color="MudBlazor.Color.Primary" Size="MudBlazor.Size.Large" />
+                <MudText Typo="MudBlazor.Typo.h5" HtmlTag="h1">Iniciar sesión</MudText>
+                <MudText Typo="MudBlazor.Typo.body2" Color="MudBlazor.Color.Secondary">
+                    NLDMAP · Acceso para personal autorizado
+                </MudText>
+
+                @if (ShowAccessNotice)
+                {
+                    <MudAlert Severity="MudBlazor.Severity.Info" role="status">
+                        Para acceder al panel de administración, inicia sesión con una cuenta autorizada.
+                    </MudAlert>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                {
+                    <MudAlert Severity="MudBlazor.Severity.Error" role="alert">@ErrorMessage</MudAlert>
+                }
+
+                <MudTextField T="string" Label="Correo electrónico"
+                              InputType="MudBlazor.InputType.Email" Variant="MudBlazor.Variant.Outlined"
+                              @bind-Value="email" UserAttributes="EmailAttributes" />
+                <MudTextField T="string" Label="Contraseña"
+                              InputType="MudBlazor.InputType.Password" Variant="MudBlazor.Variant.Outlined"
+                              @bind-Value="password" UserAttributes="PasswordAttributes" />
+
+                <MudButton ButtonType="MudBlazor.ButtonType.Submit" Variant="MudBlazor.Variant.Filled"
+                           Color="MudBlazor.Color.Primary" FullWidth="true"
+                           StartIcon="@Icons.Material.Filled.Login">
+                    Entrar al sistema
+                </MudButton>
+
+                <MudLink Href="/Account/ForgotPassword">Olvidé mi contraseña</MudLink>
+                <MudText Typo="MudBlazor.Typo.caption">
+                    ¿Necesitas una cuenta? Solicita acceso al administrador.
+                </MudText>
+            </MudStack>
+        </MudPaper>
+    </MudContainer>
+</MudStack>
+
+@code {
+    [Parameter] public string InitialEmail { get; set; } = "";
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public bool ShowAccessNotice { get; set; }
+
+    private string email = "";
+    private string password = "";
+
+    // Estos nombres conectan los inputs HTML con el modelo del POST en Login.razor.
+    private readonly Dictionary<string, object> EmailAttributes = new()
+    {
+        ["name"] = "Input.Email",
+        ["autocomplete"] = "username",
+        ["aria-required"] = "true"
+    };
+
+    private readonly Dictionary<string, object> PasswordAttributes = new()
+    {
+        ["name"] = "Input.Password",
+        ["autocomplete"] = "current-password",
+        ["aria-required"] = "true"
+    };
+
+    protected override void OnInitialized() => email = InitialEmail;
+}

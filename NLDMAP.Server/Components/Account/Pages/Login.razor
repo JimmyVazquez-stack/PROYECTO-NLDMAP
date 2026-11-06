@@ -1,0 +1,71 @@
+﻿@page "/Account/Login"
+@layout AuthLayout
+@attribute [AllowAnonymous]
+@attribute [ExcludeFromInteractiveRouting]
+@attribute [StreamRendering(false)]
+
+@using Microsoft.AspNetCore.Identity
+@using NLDMAP.Infrastructure.Identity
+@inject SignInManager<ApplicationUser> SignInManager
+@inject NavigationManager Navigation
+
+<PageTitle>Iniciar sesión | NLDMAP</PageTitle>
+
+<EditForm Model="Input" method="post" OnSubmit="LoginAsync"
+          FormName="login" Enhance="false">
+    <LoginPanel @rendermode="InteractiveServer"
+                InitialEmail="@Input.Email"
+                ErrorMessage="@errorMessage"
+                ShowAccessNotice="@RequiresAdministrationLogin" />
+</EditForm>
+
+@code {
+    private string? errorMessage;
+
+    [SupplyParameterFromForm(FormName = "login")]
+    private LoginInput Input { get; set; } = default!;
+
+    [SupplyParameterFromQuery(Name = "ReturnUrl")]
+    public string? ReturnUrl { get; set; }
+
+    private bool RequiresAdministrationLogin =>
+        !string.IsNullOrWhiteSpace(ReturnUrl) &&
+        (ReturnUrl.Equals("/administracion", StringComparison.OrdinalIgnoreCase) ||
+         ReturnUrl.StartsWith("/administracion/", StringComparison.OrdinalIgnoreCase));
+
+    protected override void OnInitialized() => Input ??= new();
+
+    private async Task LoginAsync()
+    {
+        Input.Email = (Input.Email ?? "").Trim();
+        var validation = new List<ValidationResult>();
+        if (!Validator.TryValidateObject(Input, new ValidationContext(Input), validation, true))
+        {
+            Input.Password = string.Empty;
+            errorMessage = string.Join(" ", validation.Select(x => x.ErrorMessage));
+            return;
+        }
+
+        var result = await SignInManager.PasswordSignInAsync(
+            Input.Email, Input.Password, isPersistent: false, lockoutOnFailure: true);
+        Input.Password = string.Empty;
+
+        if (result.Succeeded)
+        {
+            Navigation.NavigateTo("/administracion", forceLoad: true, replace: true);
+            return;
+        }
+
+        errorMessage = "No fue posible iniciar sesión. Revisa tus datos o inténtalo más tarde.";
+    }
+
+    private sealed class LoginInput
+    {
+        [Required(ErrorMessage = "Ingresa tu correo.")]
+        [EmailAddress(ErrorMessage = "Ingresa un correo válido.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Ingresa tu contraseña.")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

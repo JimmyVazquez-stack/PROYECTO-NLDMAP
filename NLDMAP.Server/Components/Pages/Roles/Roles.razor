@@ -1,0 +1,52 @@
+﻿@page "/administracion/roles"
+@rendermode InteractiveServer
+@layout AdministrationLayout
+@attribute [Authorize(Policy = PermissionNames.RolesRead)]
+@inherits AdminPageBase
+<PageTitle>Roles y permisos | NLDMAP</PageTitle>
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3"><h1 class="h2 mb-0">Roles y permisos</h1>
+@if (Access?.Allows(PermissionNames.RolesManage) == true) { <button class="btn btn-primary" disabled="@Busy" @onclick="NewRole">Nuevo rol</button> }</div>
+<OperationStatus Error="@Error" Notice="@Notice" Busy="Busy" />
+@if (editing is not null)
+{
+    <EditForm Model="editing" OnValidSubmit="SaveAsync" FormName="role-editor" class="card card-body mb-4 shadow-sm" @key="editing">
+        <DataAnnotationsValidator /><h2 class="h5">@(editing.Id is null ? "Crear rol" : "Editar rol")</h2>
+        <fieldset disabled="@Busy"><div class="mb-3"><label class="form-label" for="role-name">Nombre</label><InputText id="role-name" class="form-control" @bind-Value="editing.Name" readonly="@protectedName" maxlength="80" /><ValidationMessage For="() => editing.Name" /></div>
+        <p class="small text-body-secondary">Los usuarios reciben la suma de permisos de sus roles. Guardar cambios revoca las sesiones de sus integrantes.</p>
+        <div class="row g-2 mb-3">@foreach (var p in PermissionNames.Catalog)
+        {
+            <div class="col-md-6"><div class="form-check"><input class="form-check-input" type="checkbox" id="@p.Key" checked="@selected.Contains(p.Key)" @onchange="e => Toggle(p.Key, e.Value is true)" disabled="@(Access?.Allows(p.Key) != true)" /><label class="form-check-label" for="@p.Key">@p.Value <span class="text-body-secondary small">(@p.Key)</span></label></div></div>
+        }</div>
+        <div class="d-flex gap-2"><button class="btn btn-primary" type="submit">Guardar rol</button><button class="btn btn-outline-secondary" type="button" @onclick="() => editing = null">Cancelar</button></div></fieldset>
+    </EditForm>
+}
+<div class="card shadow-sm"><div class="table-responsive"><table class="table align-middle mb-0"><thead class="table-light"><tr><th>Rol</th><th>Usuarios</th><th>Permisos</th><th>Acciones</th></tr></thead><tbody>
+@foreach (var role in roles)
+{
+    <tr><td><strong>@role.Name</strong>@if (role.IsProtected) { <div class="small text-body-secondary">Rol del sistema</div> }</td><td>@role.Users</td><td><details><summary>@role.Permissions.Length permisos</summary><ul class="small mt-2 mb-0">@foreach (var p in role.Permissions) { <li>@PermissionNames.Catalog.GetValueOrDefault(p, p)</li> }</ul></details></td><td>
+    @if (Access?.Allows(PermissionNames.RolesManage) == true && role.Name != RoleNames.Administrator)
+    {
+        <div class="d-flex flex-wrap gap-2"><button class="btn btn-outline-primary btn-sm" disabled="@Busy" @onclick="() => Edit(role)">Editar</button>
+        @if (!role.IsProtected && role.Users == 0) { <button class="btn btn-outline-danger btn-sm" disabled="@Busy" @onclick="() => deleting = role">Eliminar</button> }</div>
+    }
+    else { <span class="small text-body-secondary">@(role.Name == RoleNames.Administrator ? "Protegido" : "Solo lectura")</span> }
+    </td></tr>
+}
+</tbody></table></div></div>
+@if (deleting is not null)
+{
+    <div class="alert alert-warning mt-3"><p>¿Eliminar el rol <strong>@deleting.Name</strong>?</p><button class="btn btn-danger btn-sm me-2" disabled="@Busy" @onclick="DeleteAsync">Confirmar eliminación</button><button class="btn btn-outline-secondary btn-sm" disabled="@Busy" @onclick="() => deleting = null">Cancelar</button></div>
+}
+@code {
+    private IReadOnlyList<RoleRow> roles = [];
+    private RoleInput? editing;
+    private RoleRow? deleting;
+    private HashSet<string> selected = [];
+    private bool protectedName;
+    protected override async Task LoadAsync() => roles = await Admin.GetRolesAsync();
+    private void NewRole() { editing = new(); selected = []; protectedName = false; }
+    private void Edit(RoleRow r) { editing = new() { Id = r.Id, Name = r.Name, ConcurrencyStamp = r.ConcurrencyStamp }; selected = r.Permissions.ToHashSet(); protectedName = r.IsProtected; }
+    private void Toggle(string p, bool value) { if (value) selected.Add(p); else selected.Remove(p); }
+    private Task SaveAsync() => RunAsync(async () => { editing!.Permissions = selected.ToArray(); await Admin.SaveRoleAsync(editing); editing = null; await LoadAsync(); }, "Rol guardado.");
+    private Task DeleteAsync() => RunAsync(async () => { await Admin.DeleteRoleAsync(deleting!.Id, deleting.ConcurrencyStamp); deleting = null; await LoadAsync(); }, "Rol eliminado.");
+}

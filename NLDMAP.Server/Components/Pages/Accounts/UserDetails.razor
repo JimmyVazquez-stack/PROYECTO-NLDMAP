@@ -1,0 +1,67 @@
+﻿@page "/administracion/usuarios/{UserId}"
+@rendermode InteractiveServer
+@layout AdministrationLayout
+@attribute [Authorize(Policy = PermissionNames.UsersRead)]
+@inherits AdminPageBase
+<PageTitle>Detalle de cuenta | NLDMAP</PageTitle>
+<a href="administracion/usuarios" class="text-decoration-none">← Usuarios</a>
+<h1 class="h2 mt-3">Detalle de cuenta</h1>
+<OperationStatus Error="@Error" Notice="@Notice" Busy="Busy" />
+@if (user is not null && Access is not null)
+{
+    <p class="text-body-secondary">@user.Email</p>
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <EditForm Model="profile" OnValidSubmit="SaveProfileAsync" FormName="edit-user" class="card card-body shadow-sm">
+                <DataAnnotationsValidator /><h2 class="h5 mb-3">Perfil</h2>
+                <fieldset disabled="@(Busy || !Access.Allows(PermissionNames.UsersEdit))">
+                    <div class="mb-3"><label for="display-name" class="form-label">Nombre</label><InputText id="display-name" class="form-control" @bind-Value="profile.DisplayName" maxlength="120" /><ValidationMessage For="() => profile.DisplayName" /></div>
+                    <div class="mb-3"><label for="phone" class="form-label">Teléfono</label><InputText id="phone" class="form-control" @bind-Value="profile.PhoneNumber" maxlength="30" /><ValidationMessage For="() => profile.PhoneNumber" /></div>
+                    <button type="submit" class="btn btn-primary">Guardar perfil</button>
+                </fieldset>
+            </EditForm>
+            <section class="card card-body mt-4 shadow-sm">
+                <h2 class="h5">Estado de la cuenta</h2><p>Estado actual: <strong>@(user.IsActive ? "Activa" : "Inactiva")</strong></p>
+                @if (Access.Allows(PermissionNames.UsersStatus))
+                {
+                    @if (confirmStatus)
+                    {
+                        <div class="alert alert-warning">¿Confirmas @(user.IsActive ? "desactivar" : "activar") esta cuenta? La desactivación impide el acceso.</div>
+                        <div class="d-flex gap-2"><button class="btn btn-danger" disabled="@Busy" @onclick="ChangeStatusAsync">Confirmar cambio</button><button class="btn btn-outline-secondary" disabled="@Busy" @onclick="() => confirmStatus = false">Cancelar</button></div>
+                    }
+                    else { <button class="btn btn-outline-secondary align-self-start" disabled="@Busy" @onclick="() => confirmStatus = true">@(user.IsActive ? "Desactivar cuenta" : "Activar cuenta")</button> }
+                }
+            </section>
+        </div>
+        <div class="col-lg-5"><section class="card card-body shadow-sm">
+            <h2 class="h5">Roles asignados</h2><p class="small text-body-secondary">Los cambios de roles requieren que esta cuenta vuelva a iniciar sesión.</p>
+            <fieldset disabled="@(Busy || !Access.Allows(PermissionNames.RolesAssign))">
+                @foreach (var role in roles)
+                {
+                    <div class="form-check mb-2"><input type="checkbox" class="form-check-input" id="@($"role-{role.Id}")" checked="@selected.Contains(role.Id)" @onchange="e => Toggle(role.Id, e.Value is true)" /><label class="form-check-label" for="@($"role-{role.Id}")">@role.Name</label></div>
+                }
+                <button class="btn btn-primary mt-3" disabled="@Busy" @onclick="SaveRolesAsync">Guardar roles</button>
+            </fieldset>
+        </section></div>
+    </div>
+}
+@code {
+    [Parameter] public string UserId { get; set; } = "";
+    private UserDetail? user;
+    private UserProfileInput profile = new();
+    private IReadOnlyList<RoleRow> roles = [];
+    private HashSet<string> selected = [];
+    private bool confirmStatus;
+    private string? loadedId;
+    protected override async Task LoadAsync()
+    {
+        user = await Admin.GetUserAsync(UserId); roles = await Admin.GetRolesAsync();
+        profile = new() { UserId = user.Id, ConcurrencyStamp = user.ConcurrencyStamp, DisplayName = user.DisplayName, PhoneNumber = user.PhoneNumber };
+        selected = user.RoleIds.ToHashSet(); confirmStatus = false; loadedId = UserId;
+    }
+    protected override Task OnParametersSetAsync() => Access is not null && loadedId != UserId ? RunAsync(LoadAsync) : Task.CompletedTask;
+    private void Toggle(string id, bool value) { if (value) selected.Add(id); else selected.Remove(id); }
+    private Task SaveProfileAsync() => RunAsync(async () => { await Admin.UpdateUserAsync(profile); await LoadAsync(); }, "Perfil actualizado.");
+    private Task SaveRolesAsync() => RunAsync(async () => { await Admin.SetUserRolesAsync(new(UserId, user!.ConcurrencyStamp, selected.ToArray())); await LoadAsync(); }, "Roles actualizados. La cuenta deberá volver a iniciar sesión.");
+    private Task ChangeStatusAsync() => RunAsync(async () => { await Admin.SetUserStatusAsync(new(UserId, user!.ConcurrencyStamp, !user.IsActive)); await LoadAsync(); }, "Estado actualizado.");
+}
