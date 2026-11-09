@@ -1,0 +1,8 @@
+.operations-shell { min-height: 100vh; background: #f4f8f7; color: #173d3a; padding: 32px; }
+.operations-header { display: flex; align-items: center; gap: 80px; font-size: 14px; margin-bottom: 22px; }
+.operations-brand { display: flex; gap: 24px; }
+.operations-nav { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 28px; font-size: 14px; }
+.operations-nav ::deep a { color: #526d68; text-decoration: none; padding: 4px 0; }
+.operations-nav ::deep a.active { color: #173d3a; font-weight: 700; border-bottom: 2px solid #173d3a; }
+.operations-nav span { color: #526d68; opacity: .75; padding: 4px 0; cursor: default; }
+@media(max-width: 600px) { .operations-shell { padding: 20px 16px; } .operations-header { flex-wrap: wrap; gap: 12px; } .operations-nav { gap: 16px; } }

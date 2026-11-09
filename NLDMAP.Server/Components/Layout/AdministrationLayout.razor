@@ -6,6 +6,7 @@
             <hr />
             <nav class="nav nav-pills flex-row flex-md-column gap-1" aria-label="Administración">
                 <NavLink class="nav-link text-white" href="administracion" Match="NavLinkMatch.All">Inicio</NavLink>
+                <AuthorizeView Policy="@PermissionNames.Access"><NavLink class="nav-link text-white" href="gestion/reportes">Bandeja de reportes · Demo</NavLink></AuthorizeView>
                 <AuthorizeView Policy="@PermissionNames.UsersRead"><NavLink class="nav-link text-white" href="administracion/usuarios">Usuarios</NavLink></AuthorizeView>
                 <AuthorizeView Policy="@PermissionNames.RolesRead"><NavLink class="nav-link text-white" href="administracion/roles">Roles y permisos</NavLink></AuthorizeView>
                 <AuthorizeView Policy="@PermissionNames.AuditRead"><NavLink class="nav-link text-white" href="administracion/auditoria">Auditoría</NavLink></AuthorizeView>
