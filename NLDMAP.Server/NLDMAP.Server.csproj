@@ -25,4 +25,9 @@
     <ProjectReference Include="..\NLDMAP.Infrastructure\NLDMAP.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <_ContentIncludedByDefault Remove="Components\Pages\Reports\CreateReport.razor" />
+    <_ContentIncludedByDefault Remove="Components\Pages\Reports\ReportInbox.razor" />
+  </ItemGroup>
+
 </Project>
