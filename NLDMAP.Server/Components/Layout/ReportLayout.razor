@@ -1,0 +1,42 @@
+@namespace NLDMAP.Server.Components.Layout
+@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components
+@using MudBlazor
+
+<MudLayout>
+
+    <MudAppBar Color="Color.Surface"
+               Elevation="1"
+               Fixed="true">
+
+        <MudLink Href="/"
+                 Color="Color.Primary"
+                 Underline="Underline.None"
+                 Typo="Typo.h6">
+            NLDMAP
+        </MudLink>
+
+        <MudDivider Vertical="true"
+                    FlexItem="true"
+                    Class="mx-4" />
+
+        <MudText Typo="Typo.subtitle2">
+            Reportes
+        </MudText>
+
+        <MudSpacer />
+
+        <MudButton Href="/"
+                   Variant="Variant.Text"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Outlined.Home">
+            Inicio
+        </MudButton>
+
+    </MudAppBar>
+
+    <MudMainContent>
+        @Body
+    </MudMainContent>
+
+</MudLayout>
