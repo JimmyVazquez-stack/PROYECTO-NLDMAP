@@ -7,6 +7,7 @@ using NLDMAP.Infrastructure.Persistence;
 using NLDMAP.Application.Administration;
 using NLDMAP.Application.Accounts;
 using NLDMAP.Infrastructure.Administration;
+using NLDMAP.Infrastructure.Catalogs;
 
 namespace NLDMAP.Infrastructure
 {
@@ -32,6 +33,7 @@ namespace NLDMAP.Infrastructure
             services.AddScoped<IAdministrationStore, AdministrationStore>();
             services.AddScoped<IAccountLifecycle, AccountLifecycle>();
             services.AddScoped<AccountEmailSender>();
+            services.AddMongoCatalogs(configuration);
 
             return services;
         }

@@ -30,8 +30,8 @@
 
     private bool RequiresAdministrationLogin =>
         !string.IsNullOrWhiteSpace(ReturnUrl) &&
-        (ReturnUrl.Equals("/administracion", StringComparison.OrdinalIgnoreCase) ||
-         ReturnUrl.StartsWith("/administracion/", StringComparison.OrdinalIgnoreCase));
+        (ReturnUrl.Equals("/admin", StringComparison.OrdinalIgnoreCase) ||
+         ReturnUrl.StartsWith("/admin/", StringComparison.OrdinalIgnoreCase));
 
     protected override void OnInitialized() => Input ??= new();
 
@@ -52,7 +52,7 @@
 
         if (result.Succeeded)
         {
-            Navigation.NavigateTo("/administracion", forceLoad: true, replace: true);
+            Navigation.NavigateTo("/admin", forceLoad: true, replace: true);
             return;
         }
 

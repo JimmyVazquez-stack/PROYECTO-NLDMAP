@@ -12,6 +12,8 @@ public static class PermissionNames
     public const string RolesAssign = "Roles.Assign";
     public const string AuditRead = "Audit.Read";
     public const string InvitationsManage = "Invitations.Manage";
+    public const string CatalogsRead = "Catalogs.Read";
+    public const string CatalogsManage = "Catalogs.Manage";
 
     public static readonly IReadOnlyDictionary<string, string> Catalog =
         new Dictionary<string, string>
@@ -20,5 +22,6 @@ public static class PermissionNames
             [UsersStatus] = "Activar y desactivar cuentas", [RolesRead] = "Consultar roles",
             [RolesManage] = "Administrar roles y permisos", [RolesAssign] = "Asignar roles",
             [AuditRead] = "Consultar auditoría", [InvitationsManage] = "Administrar invitaciones",
+            [CatalogsRead] = "Consultar catalogos",[CatalogsManage] = "Administrar catalogos",
         };
 }

@@ -1,10 +1,10 @@
-﻿@page "/administracion/usuarios/{UserId}"
+﻿@page "/admin/usuarios/{UserId}"
 @rendermode InteractiveServer
 @layout AdministrationLayout
 @attribute [Authorize(Policy = PermissionNames.UsersRead)]
 @inherits AdminPageBase
 <PageTitle>Detalle de cuenta | NLDMAP</PageTitle>
-<a href="administracion/usuarios" class="text-decoration-none">← Usuarios</a>
+<a href="admin/usuarios" class="text-decoration-none">← Usuarios</a>
 <h1 class="h2 mt-3">Detalle de cuenta</h1>
 <OperationStatus Error="@Error" Notice="@Notice" Busy="Busy" />
 @if (user is not null && Access is not null)

@@ -39,7 +39,7 @@
     private HttpContext HttpContext { get; set; } = default!;
 
     private IComponentRenderMode? PageRenderMode =>
-        HttpContext.Request.Path.StartsWithSegments("/administracion")
+        HttpContext.Request.Path.StartsWithSegments("/admin")
         || HttpContext.Request.Path.StartsWithSegments("/reportes")
             ? RenderMode.InteractiveServer
             : null;
