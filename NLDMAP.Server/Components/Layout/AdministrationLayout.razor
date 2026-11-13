@@ -5,15 +5,16 @@
 @using Microsoft.AspNetCore.Components.Web
 @using NLDMAP.Application.Security
 @using MudBlazor
+@using MudBlazor.Utilities
 
-<MudThemeProvider Theme="@_theme" IsDarkMode="false" />
+<MudThemeProvider Theme="@_theme" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
 <MudLayout>
 
-   <MudAppBar Color="Color.Primary" Elevation="2">
+   <MudAppBar Color="Color.Secondary" Elevation="2">
 
     <MudIconButton Icon="@Icons.Material.Filled.Menu"
                    Size="Size.Medium"
@@ -30,7 +31,7 @@
               Spacing="1">
 
         <MudIconButton Icon="@Icons.Material.Outlined.Home"
-                       Href="/administracion"
+                       Href="/admin"
                        Size="Size.Medium"
                        title="Inicio"
                        aria-label="Inicio de administración" />
@@ -71,118 +72,107 @@
     </MudStack>
 
 </MudAppBar>
-    <MudDrawer id="administration-menu"
-               @bind-Open="_drawerOpen"
-               Variant="DrawerVariant.Responsive"
-               Breakpoint="Breakpoint.Md"
-               ClipMode="DrawerClipMode.Never"
-               Elevation="2"
-               Style="overflow-y: auto; overflow-x: hidden;"
-               Height="100vh">
+<MudDrawer id="administration-menu"
+           @bind-Open="_drawerOpen"
+           Variant="DrawerVariant.Responsive"
+           Breakpoint="Breakpoint.Md"
+           ClipMode="DrawerClipMode.Never"
+           Elevation="2"
+           Style="overflow-y: auto; overflow-x: hidden;"
+           Height="100vh">
 
-        <MudDrawerHeader Class="px-4 py-4">
-            <MudStack Spacing="1">
+    <MudDrawerHeader Class="px-4 py-4">
+        <MudStack Spacing="1">
 
-                <MudStack Row="true"
-                          AlignItems="AlignItems.Center"
-                          Spacing="1">
+            <MudStack Row="true"
+                      AlignItems="AlignItems.Center"
+                      Spacing="1">
 
-                    <MudPaper Elevation="1"
-                              Class="px-2 py-0 rounded-lg"
-                              Style="background: transparent; border: 1px solid black;">
-
-                        <MudText Typo="Typo.h6"
-                                 Style="color: black; font-weight: 700;">
-                            N
-                        </MudText>
-
-                    </MudPaper>
+                <MudPaper Elevation="1"
+                          Class="px-2 py-0 rounded-lg"
+                          Style="background: transparent; border: 1px solid black;">
 
                     <MudText Typo="Typo.h6"
-                             Class="ml-1"
                              Style="color: black; font-weight: 700;">
-                        LDMAP
+                        N
                     </MudText>
 
-                </MudStack>
+                </MudPaper>
+
+                <MudText Typo="Typo.h6"
+                         Class="ml-1"
+                         Style="color: black; font-weight: 700;">
+                    LDMAP
+                </MudText>
+
+            </MudStack>
 
              
 
-            </MudStack>
-        </MudDrawerHeader>
-        
-        <nav aria-label="Administración">
-            <MudNavMenu Color="Color.Inherit"
-                        Rounded="true"
-                        Margin="Margin.Dense"
-                        Class="pa-3">
-
-                <MudNavLink Href="/administracion"
-                            Match="NavLinkMatch.All"
-                            Icon="@Icons.Material.Outlined.Home"
-                            Style="text-decoration: none;">
-                    Inicio
-                </MudNavLink>
-
-                <AuthorizeView Policy="@PermissionNames.UsersRead">
-                    <MudNavLink Href="/administracion/usuarios"
-                                Icon="@Icons.Material.Outlined.People"
-                                Style="text-decoration: none;">
-                        
-                        Usuarios
-                    </MudNavLink>
-                </AuthorizeView>
-
-                <AuthorizeView Policy="@PermissionNames.RolesRead">
-                    <MudNavLink Href="/administracion/roles"
-                                Icon="@Icons.Material.Outlined.AdminPanelSettings"
-                                Style="text-decoration: none;">
-                        Roles y permisos
-                    </MudNavLink>
-                </AuthorizeView>
-
-                <AuthorizeView Policy="@PermissionNames.AuditRead">
-                    <MudNavLink Href="/administracion/auditoria"
-                                Icon="@Icons.Material.Outlined.History"
-                                Style="text-decoration: none;">
-                        Auditoría
-                    </MudNavLink>
-                </AuthorizeView>
-
-                <AuthorizeView Policy="@PermissionNames.InvitationsManage">
-                    <MudNavLink Href="/administracion/invitaciones"
-                                Icon="@Icons.Material.Outlined.Mail"
-                                Style="text-decoration: none;">
-                        Invitaciones
-                    </MudNavLink>
-                </AuthorizeView>
-
-            </MudNavMenu>
-        </nav>
-
-        <MudDivider Class="mx-4 my-2" />
-
-        <MudStack Row="true"
-                  AlignItems="AlignItems.Center"
-                  Spacing="1"
-                  Class="px-4 pt-5 pb-3">
-
-            <MudText Typo="Typo.subtitle1">
-                <strong>NLDMAP</strong>
-            </MudText>
-
-            <MudText Typo="Typo.body2" >
-                — Administración
-            </MudText>
-
         </MudStack>
+    </MudDrawerHeader>
+        
+    <nav class="admin-sidebar-nav" aria-label="Administración">
+        <MudNavMenu Color="Color.Inherit"
+                    Rounded="true"
+                    Margin="Margin.Dense"
+                    Class="pa-3">
+                
 
-    </MudDrawer>
-    
+            <AuthorizeView Policy="@PermissionNames.UsersRead">
+                <MudNavLink Href="/admin/usuarios"
+                            Icon="@Icons.Material.Outlined.People"
+                            Style="text-decoration: none;">
+                        
+                    Usuarios
+                </MudNavLink>
+            </AuthorizeView>
 
-    <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.ExtraLarge"
-                      Class="pa-4 pa-md-8">
+            <AuthorizeView Policy="@PermissionNames.RolesRead">
+                <MudNavLink Href="/admin/roles"
+                            Icon="@Icons.Material.Outlined.AdminPanelSettings"
+                            Style="text-decoration: none;">
+                    Roles y permisos
+                </MudNavLink>
+            </AuthorizeView>
+
+            <AuthorizeView Policy="@PermissionNames.AuditRead">
+                <MudNavLink Href="/admin/auditoria"
+                            Icon="@Icons.Material.Outlined.History"
+                            Style="text-decoration: none;">
+                    Auditoría
+                </MudNavLink>
+            </AuthorizeView>
+
+            <AuthorizeView Policy="@PermissionNames.InvitationsManage">
+                <MudNavLink Href="/admin/invitaciones"
+                            Icon="@Icons.Material.Outlined.Mail"
+                            Style="text-decoration: none;">
+                    Invitaciones
+                </MudNavLink>
+            </AuthorizeView>
+                
+            <AuthorizeView Policy="@PermissionNames.CatalogsRead">
+                <MudNavLink Href="/admin/catalogos"
+                            Icon="@Icons.Material.Outlined.Folder"
+                            Style="text-decoration: none;">
+                    Catalogos
+                </MudNavLink>
+                    
+            </AuthorizeView>
+
+        </MudNavMenu>
+    </nav>
+
+    <MudDivider Class="mx-4 my-2" />
+
+</MudDrawer>
+
+<MudMainContent Class="d-flex flex-column"
+                Style="min-height: 100vh; min-height: 100dvh; box-sizing: border-box;">
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge"
+                  Class="pa-4 pa-md-8"
+                  Style="flex: 1 0 auto;">
 
             <ErrorBoundary>
                 <ChildContent>
@@ -194,7 +184,7 @@
                               Variant="Variant.Outlined">
                         Ocurrió un error al cargar esta sección.
 
-                        <a href="/administracion"
+                        <a href="/admin"
                            data-enhance-nav="false">
                             Recargar administración
                         </a>
@@ -203,6 +193,25 @@
             </ErrorBoundary>
 
         </MudContainer>
+        <MudDivider />
+
+        <footer class="px-4 py-4">
+            <MudStack Row="true"
+                      AlignItems="AlignItems.Center"
+                      Justify="Justify.Center"
+                      Wrap="Wrap.Wrap"
+                      Spacing="1">
+
+                <MudText Typo="Typo.subtitle2">
+                    <strong>NLDMAP-WEB</strong>
+                </MudText>
+
+                <MudText Typo="Typo.body2" Align="Align.Center">
+                    Aplicación web para la gestión de reportes de personas no localizadas y desaparecidas
+                </MudText>
+
+            </MudStack>
+        </footer>
     </MudMainContent>
 
 </MudLayout>

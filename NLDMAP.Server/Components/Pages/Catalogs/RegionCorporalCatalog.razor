@@ -1,0 +1,126 @@
+@page "/admin/catalogos/regiones-corporales"
+@namespace NLDMAP.Server.Components.Pages.Catalogs
+@rendermode InteractiveServer
+@layout AdministrationLayout
+@attribute [Authorize(Policy = PermissionNames.CatalogsRead)]
+@inherits AdminPageBase
+@using NLDMAP.Application.Catalogs
+@using NLDMAP.Application.Security
+
+<PageTitle>Regiones corporales | NLDMAP</PageTitle>
+
+<MudStack Spacing="3">
+    <MudStack Row="true" AlignItems="AlignItems.Center"
+              Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
+        <MudText Typo="Typo.h4" HtmlTag="h1">Regiones corporales</MudText>
+
+        @if (CanManage)
+        {
+            <MudButton Variant="Variant.Outlined" 
+                       OnClick="NewOption" Disabled="Busy">
+                Nueva región
+            </MudButton>
+        }
+    </MudStack>
+
+    @if (!string.IsNullOrEmpty(Error))
+    {
+        <MudAlert Severity="Severity.Error" role="alert">@Error</MudAlert>
+    }
+
+    @if (!string.IsNullOrEmpty(Notice))
+    {
+        <MudAlert Severity="Severity.Success" role="status">@Notice</MudAlert>
+    }
+
+    @if (Busy)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true"
+                           aria-label="Procesando regiones corporales" />
+    }
+
+    @if (editing is not null && CanManage)
+    {
+        <MudPaper Class="pa-4" Elevation="1">
+            <EditForm Model="editing" OnValidSubmit="SaveAsync"
+                      FormName="region-corporal-editor" @key="editing">
+                <DataAnnotationsValidator />
+
+                <MudStack Spacing="3">
+                    <MudText Typo="Typo.h6" HtmlTag="h2">
+                        @(editing.Id.HasValue ? "Editar región" : "Crear región")
+                    </MudText>
+
+                    <MudTextField T="string" Label="Nombre de la región"
+                                  Variant="Variant.Outlined"
+                                  @bind-Value="editing.Region"
+                                  For="() => editing.Region"
+                                  Disabled="Busy" />
+
+                    <MudNumericField T="int" Label="Orden de presentación"
+                                     Variant="Variant.Outlined"
+                                     @bind-Value="editing.Orden"
+                                     For="() => editing.Orden"
+                                     Min="0" Max="9999" Disabled="Busy" />
+
+                    <MudStack Row="true" Spacing="2">
+                        <MudButton ButtonType="ButtonType.Submit" Color="Color.Primary"
+                                   Variant="Variant.Filled" Disabled="Busy">
+                            Guardar
+                        </MudButton>
+                        <MudButton ButtonType="ButtonType.Button"
+                                   OnClick="CancelEdit" Disabled="Busy">
+                            Cancelar
+                        </MudButton>
+                    </MudStack>
+                </MudStack>
+            </EditForm>
+        </MudPaper>
+    }
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+        <MudTextField T="string" Label="Buscar por nombre"
+                      Variant="Variant.Outlined" @bind-Value="search"
+                      Disabled="Busy" />
+
+        <MudButton OnClick="SearchAsync" Variant="Variant.Outlined" Disabled="Busy">
+            Buscar
+        </MudButton>
+    </MudStack>
+
+    <MudTable T="RegionCorporalRow" Items="result.Items"
+              Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
+        <HeaderContent>
+            <MudTh>Región</MudTh>
+            <MudTh>Orden</MudTh>
+            @if (CanManage)
+            {
+                <MudTh>Acciones</MudTh>
+            }
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="Región">@context.Region</MudTd>
+            <MudTd DataLabel="Orden">@context.Orden</MudTd>
+            @if (CanManage)
+            {
+                <MudTd DataLabel="Acciones">
+                    <MudButton OnClick="() => Edit(context)" Color="Color.Primary"
+                               Size="Size.Small" Disabled="Busy">
+                        Editar
+                    </MudButton>
+                </MudTd>
+            }
+        </RowTemplate>
+
+        <NoRecordsContent>
+            <MudText Class="pa-4">
+                @(Busy ? "Cargando regiones…" : "No hay regiones para mostrar.")
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+
+    <MudPagination Count="result.TotalPages" Selected="result.Page"
+                   SelectedChanged="ChangePageAsync" Disabled="Busy"
+                   Color="Color.Primary" />
+</MudStack>

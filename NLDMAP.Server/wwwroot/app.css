@@ -36,3 +36,9 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+.admin-sidebar-nav a,
+.admin-sidebar-nav a:hover,
+.admin-sidebar-nav a:focus-visible {
+    text-decoration: none;
+}
