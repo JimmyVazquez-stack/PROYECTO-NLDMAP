@@ -35,6 +35,10 @@ if (d.deployment_smoke.countDocuments({_id:"persistent"})!==1) quit(2);
 "${compose[@]}" exec -T server curl -fsS -H 'Host: localhost' -H 'X-Forwarded-Proto: https' http://127.0.0.1:8080/Account/Login > /tmp/nldmap-login.html
 grep -q '__RequestVerificationToken' /tmp/nldmap-login.html
 "${compose[@]}" run --rm --no-deps caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+"${compose[@]}" up -d caddy
+# HTTPS local de Caddy permite comprobar el proxy sin un dominio público en CI.
+curl -kfsS --retry 10 --retry-delay 2 --retry-all-errors https://localhost/health/live
+python scripts/smoke-login.py
 "${compose[@]}" restart postgres mongodb
 "${compose[@]}" up -d --wait postgres mongodb
 "${compose[@]}" exec -T mongodb mongosh --quiet --eval '
