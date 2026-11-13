@@ -1,0 +1,39 @@
+﻿@page "/admin/usuarios"
+@rendermode InteractiveServer
+@layout AdministrationLayout
+@attribute [Authorize(Policy = PermissionNames.UsersRead)]
+@inherits AdminPageBase
+<PageTitle>Usuarios | NLDMAP</PageTitle>
+<h1 class="h2">Usuarios</h1>
+<p class="text-body-secondary">Busca cuentas y consulta sus permisos de acceso.</p>
+<OperationStatus Error="@Error" Notice="@Notice" Busy="Busy" />
+<EditForm Model="filters" OnValidSubmit="SearchAsync" FormName="user-filters" class="card card-body mb-3">
+    <div class="row g-3 align-items-end">
+        <div class="col-md-5"><label for="user-search" class="form-label">Nombre o correo</label><InputText id="user-search" class="form-control" @bind-Value="filters.Search" maxlength="100" /></div>
+        <div class="col-md-2"><label for="user-status" class="form-label">Estado</label><InputSelect id="user-status" class="form-select" @bind-Value="filters.Status"><option value="">Todos</option><option value="true">Activos</option><option value="false">Inactivos</option></InputSelect></div>
+        <div class="col-md-3"><label for="user-role" class="form-label">Rol</label><InputSelect id="user-role" class="form-select" @bind-Value="filters.RoleId"><option value="">Todos</option>@foreach (var r in roles) { <option value="@r.Id">@r.Name</option> }</InputSelect></div>
+        <div class="col-md-2"><button class="btn btn-primary w-100" disabled="@Busy" type="submit">Consultar</button></div>
+    </div>
+</EditForm>
+@if (users is not null)
+{
+    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
+        <thead class="table-light"><tr><th>Cuenta</th><th>Roles</th><th>Estado</th><th><span class="visually-hidden">Acciones</span></th></tr></thead><tbody>
+        @foreach (var u in users.Items)
+        {
+            <tr><td><div class="fw-semibold">@(string.IsNullOrWhiteSpace(u.DisplayName) ? "Sin nombre" : u.DisplayName)</div><div class="small text-body-secondary">@u.Email</div></td><td>@(u.Roles.Length == 0 ? "Sin roles" : string.Join(", ", u.Roles))</td><td><span class="badge @(u.IsActive ? "text-bg-success" : "text-bg-secondary")">@(u.IsActive ? "Activa" : "Inactiva")</span></td><td class="text-end"><a class="btn btn-outline-primary btn-sm" href="@($"administracion/usuarios/{Uri.EscapeDataString(u.Id)}")">Ver cuenta</a></td></tr>
+        }
+        @if (users.Items.Count == 0) { <tr><td colspan="4" class="text-center text-body-secondary py-5">No hay cuentas con estos filtros.</td></tr> }
+        </tbody></table></div><Pager Page="users.Page" Pages="users.TotalPages" Total="users.Total" Busy="Busy" Changed="ChangePageAsync" /></div>
+}
+@code {
+    private sealed class Filters { public string Search { get; set; } = ""; public string Status { get; set; } = ""; public string RoleId { get; set; } = ""; }
+    private Filters filters = new();
+    private PageResult<UserRow>? users;
+    private IReadOnlyList<RoleRow> roles = [];
+    private int page = 1;
+    protected override async Task LoadAsync() { roles = await Admin.GetRolesAsync(); await LoadUsersAsync(); }
+    private async Task LoadUsersAsync() => users = await Admin.GetUsersAsync(new(filters.Search, bool.TryParse(filters.Status, out var active) ? active : null, filters.RoleId, page));
+    private Task SearchAsync() => RunAsync(async () => { page = 1; await LoadUsersAsync(); });
+    private Task ChangePageAsync(int value) => RunAsync(async () => { page = value; await LoadUsersAsync(); });
+}

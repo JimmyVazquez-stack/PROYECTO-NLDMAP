@@ -1,0 +1,11 @@
+@if (!string.IsNullOrEmpty(Error)) { <div class="alert alert-danger" role="alert">@Error</div> }
+@if (!string.IsNullOrEmpty(Notice)) { <div class="alert alert-success" role="status">@Notice</div> }
+@if (Busy)
+{
+    <div class="d-flex align-items-center gap-2 mb-3" role="status"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Procesando…</div>
+}
+@code {
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public string? Notice { get; set; }
+    [Parameter] public bool Busy { get; set; }
+}

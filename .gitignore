@@ -1,90 +1,53 @@
-# Editores y configuración personal
-.idea/
+# Resultados de compilación de .NET
+[Bb]in/
+[Oo]bj/
+artifacts/
+publish/
+
+# Configuración local de Visual Studio
 .vs/
-.vscode/
-*.code-workspace
-*.sln.DotSettings.user
-*.sln.docstates
 *.user
 *.suo
-*.userprefs
 *.userosscache
+*.sln.docstates
 
-# .NET: compilación, paquetes y pruebas
-bin/
-obj/
-publish/
-artifacts/
+# Configuración personal de otros editores
+.idea/
+
+# Resultados de pruebas y cobertura
 TestResults/
-BenchmarkDotNet.Artifacts/
-*.nupkg
-*.snupkg
-*.trx
-project.lock.json
+coverage/
+*.coverage
+*.coveragexml
 
-# Configuración local y secretos
-appsettings.Development.json
-appsettings.Local.json
-secrets.json
-*.env
+# Paquetes y dependencias
+packages/
+node_modules/
+
+# Configuración local y variables de entorno
 .env
 .env.*
 !.env.example
-!.env.*.example
+!.env.sample
+!deploy/.env.production.example
+**/App_Data/
+appsettings.Local.json
+appsettings.*.Local.json
 
-# Certificados privados
+# Certificados y claves privadas
 *.pfx
 *.p12
 *.key
 
-# Logs, temporales y cobertura
+# Registros y volcados de memoria
+logs/
 *.log
-*.tmp
-coverage/
-coverage.*
+core
+core.*
+*.dmp
 
-# Flutter / Dart
-build/
-.dart_tool/
-.packages
-.flutter-plugins
-.flutter-plugins-dependencies
-*.iml
-
-# Android / iOS
-android/.gradle/
-android/local.properties
-**/xcuserdata/
-**/*.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
-
-# Otros frontends
-node_modules/
-dist/
-.next/
-.nuxt/
-
-# Terraform
-.terraform/
-*.tfstate
-*.tfstate.*
-
-# Sistema operativo y archivos de respaldo del editor
+# Archivos temporales del sistema
 .DS_Store
 Thumbs.db
-*~
-*.swp
-
-# Exclusión existente de documentación
-.docs
-
-# Respaldos locales del proyecto anterior
-/backend_anterior/
-/backend_respaldo/
-
-# Archivos locales de las pruebas de autenticación
-nldmap-cookies.txt
-nldmap-devcert.pem
-
-# Volcados de memoria de la API
-/backend/NLDMAP.API/core
-/backend/NLDMAP.API/core.[0-9]*
+*.tmp
+*.bak

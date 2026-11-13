@@ -1,0 +1,181 @@
+@page "/admin/catalogos/tez"
+@namespace NLDMAP.Server.Components.Pages.Catalogs
+@rendermode InteractiveServer
+@layout AdministrationLayout
+@attribute [Authorize(Policy = PermissionNames.CatalogsRead)]
+@inherits AdminPageBase
+@using NLDMAP.Application.Catalogs
+
+<PageTitle>Catálogo de tez | NLDMAP</PageTitle>
+
+<MudStack Spacing="3">
+    <MudStack Row="true" AlignItems="AlignItems.Center"
+              Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
+        <div>
+            <MudText Typo="Typo.h4" HtmlTag="h1">Catálogo de tez</MudText>
+            <MudText Typo="Typo.body2">
+                Administra las opciones de color de piel para los reportes.
+            </MudText>
+        </div>
+
+        @if (CanManage)
+        {
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="Busy"
+                       StartIcon="@Icons.Material.Filled.Add" OnClick="NewOption">
+                Nueva opción
+            </MudButton>
+        }
+    </MudStack>
+
+    @if (!string.IsNullOrEmpty(Error))
+    {
+        <MudAlert Severity="Severity.Error" role="alert">@Error</MudAlert>
+    }
+
+    @if (!string.IsNullOrEmpty(Notice))
+    {
+        <MudAlert Severity="Severity.Success" role="status">@Notice</MudAlert>
+    }
+
+    @if (Busy)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true"
+                           aria-label="Procesando catálogo" />
+    }
+
+    @if (editing is not null && CanManage)
+    {
+        <MudPaper Class="pa-4" Elevation="1">
+            <EditForm Model="editing" OnValidSubmit="SaveAsync"
+                      FormName="tez-editor" @key="editing">
+                <DataAnnotationsValidator />
+
+                <MudStack Spacing="3">
+                    <MudText Typo="Typo.h6" HtmlTag="h2">
+                        @(editing.Id.HasValue ? "Editar opción" : "Crear opción")
+                    </MudText>
+
+                    <MudTextField T="string" Label="Color de piel" Variant="Variant.Outlined"
+                                  @bind-Value="editing.ColorPiel" For="() => editing.ColorPiel"
+                                  MaxLength="80" Disabled="Busy" />
+
+                    <MudTextField T="string" Label="Color HEX" Variant="Variant.Outlined"
+                                  @bind-Value="editing.ColorHex" For="() => editing.ColorHex"
+                                  Immediate="true" Disabled="Busy"
+                                  HelperText="Ejemplo #D7BD96" />
+
+                    @if (SwatchStyle(editing.ColorHex) is string previewStyle)
+                    {
+                        <div>
+                            <span style="@previewStyle" aria-hidden="true"></span>
+                            <span>Vista previa</span>
+                        </div>
+                    }
+
+                    <MudNumericField T="int" Label="Orden de presentación"
+                                     Variant="Variant.Outlined" @bind-Value="editing.Orden"
+                                     For="() => editing.Orden" Min="0" Max="9999"
+                                     Disabled="Busy" />
+
+                    <MudStack Row="true" Spacing="2">
+                        <MudButton ButtonType="ButtonType.Submit" Color="Color.Primary"
+                                   Variant="Variant.Filled" Disabled="Busy">
+                            Guardar
+                        </MudButton>
+                        <MudButton ButtonType="ButtonType.Button" Variant="Variant.Outlined"
+                                   Disabled="Busy" OnClick="CancelEdit">
+                            Cancelar
+                        </MudButton>
+                    </MudStack>
+                </MudStack>
+            </EditForm>
+        </MudPaper>
+    }
+
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudGrid Spacing="2" Class="align-center">
+            <MudItem xs="12" md="8">
+                <MudTextField T="string" Label="Buscar por nombre o HEX"
+                              Variant="Variant.Outlined" @bind-Value="search"
+                              MaxLength="80" Disabled="Busy"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" />
+            </MudItem>
+
+            <MudItem xs="12" md="4">
+                <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                    <MudButton Color="Color.Primary" Variant="Variant.Outlined"
+                               Disabled="Busy" OnClick="SearchAsync">
+                        Buscar
+                    </MudButton>
+                    <MudButton Disabled="Busy" OnClick="RefreshAsync"
+                               StartIcon="@Icons.Material.Filled.Refresh">
+                        Actualizar
+                    </MudButton>
+                </MudStack>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudTable T="TezRow" Items="result.Items" Hover="true"
+              Breakpoint="Breakpoint.Sm" Elevation="1">
+        <HeaderContent>
+            <MudTh>Color de piel</MudTh>
+            <MudTh>Color HEX</MudTh>
+            <MudTh>Orden</MudTh>
+            <MudTh>Acciones</MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="Color de piel">@context.ColorPiel</MudTd>
+
+            <MudTd DataLabel="Color HEX">
+                @if (SwatchStyle(context.ColorHex) is string rowStyle)
+                {
+                    <span style="@rowStyle" aria-hidden="true"></span>
+                    <span>@context.ColorHex</span>
+                }
+                else
+                {
+                    <span>Sin color asignado</span>
+                }
+            </MudTd>
+
+            <MudTd DataLabel="Orden">@context.Orden</MudTd>
+
+            <MudTd DataLabel="Acciones">
+                @if (CanManage)
+                {
+                    <MudButton Color="Color.Primary" Size="Size.Small"
+                               Disabled="Busy" OnClick="() => Edit(context)">
+                        Editar
+                    </MudButton>
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption">Solo lectura</MudText>
+                }
+            </MudTd>
+        </RowTemplate>
+
+        <NoRecordsContent>
+            <MudText Class="pa-4">
+                @(Busy
+                    ? "Cargando opciones…"
+                    : CanManage
+                        ? "No hay opciones para mostrar. Puedes crear una opción o ajustar la búsqueda."
+                        : "No hay opciones para mostrar.")
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+
+    <MudStack Row="true" AlignItems="AlignItems.Center"
+              Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
+        <MudText Typo="Typo.body2">
+            @result.Total opciones · Página @result.Page de @result.TotalPages
+        </MudText>
+        <MudPagination Count="result.TotalPages" Selected="result.Page"
+                       SelectedChanged="ChangePageAsync" Disabled="Busy"
+                       Color="Color.Primary" />
+    </MudStack>
+</MudStack>

@@ -1,0 +1,14 @@
+<nav aria-label="Paginación" class="d-flex flex-wrap justify-content-between align-items-center gap-2 p-3 border-top">
+    <span class="small text-body-secondary">@Total resultados · Página @Page de @Pages</span>
+    <div class="btn-group">
+        <button class="btn btn-outline-secondary btn-sm" disabled="@(Busy || Page <= 1)" @onclick="() => Changed.InvokeAsync(Page - 1)">Anterior</button>
+        <button class="btn btn-outline-secondary btn-sm" disabled="@(Busy || Page >= Pages)" @onclick="() => Changed.InvokeAsync(Page + 1)">Siguiente</button>
+    </div>
+</nav>
+@code {
+    [Parameter] public int Page { get; set; }
+    [Parameter] public int Pages { get; set; }
+    [Parameter] public int Total { get; set; }
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public EventCallback<int> Changed { get; set; }
+}

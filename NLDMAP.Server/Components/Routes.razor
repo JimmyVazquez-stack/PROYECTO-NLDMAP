@@ -1,0 +1,15 @@
+<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="routeData"
+                            DefaultLayout="typeof(Layout.MainLayout)">
+            <NotAuthorized>
+                <p>No tienes acceso a esta página.</p>
+
+                <a href="Account/Login" data-enhance-nav="false">
+                    Ir al inicio de sesión
+                </a>
+            </NotAuthorized>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+</Router>

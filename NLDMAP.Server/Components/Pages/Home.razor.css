@@ -1,0 +1,54 @@
+/* CSS for Home component */
+.public-home {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    color: #183c3d;
+    background: #fff;
+}
+
+    .public-home main {
+        flex: 1;
+    }
+
+.public-brand {
+    color: #183c3d;
+    font-size: 1.2rem;
+    font-weight: 750;
+    text-decoration: none;
+}
+
+.public-link {
+    color: #425b59;
+    text-decoration: none;
+}
+
+    .public-link:hover {
+        text-decoration: underline;
+        text-underline-offset: 5px;
+    }
+
+.public-hero {
+    background: #f3f5ed;
+}
+
+    .public-hero h1 {
+        max-width: 800px;
+        letter-spacing: -.04em;
+    }
+
+    .public-hero .lead {
+        max-width: 650px;
+        color: #526863;
+    }
+
+.public-eyebrow {
+    color: #50654b;
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+}
+
+#quienes-somos {
+    scroll-margin-top: 2rem;
+}
