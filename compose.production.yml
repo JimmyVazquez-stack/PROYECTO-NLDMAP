@@ -87,7 +87,7 @@ services:
       - ./deploy/postgres:/docker-entrypoint-initdb.d:ro
     networks: [data]
     healthcheck:
-      test: [CMD-SHELL, "pg_isready -U postgres -d postgres"]
+      test: [CMD-SHELL, "pg_isready -h 127.0.0.1 -U postgres -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -106,7 +106,7 @@ services:
       - ./deploy/mongo:/docker-entrypoint-initdb.d:ro
     networks: [data]
     healthcheck:
-      test: [CMD, mongosh, --quiet, --eval, "quit(db.adminCommand('ping').ok ? 0 : 1)"]
+      test: [CMD, mongosh, --host, mongodb, --quiet, --eval, "quit(db.adminCommand('ping').ok ? 0 : 1)"]
       interval: 5s
       timeout: 5s
       retries: 30
