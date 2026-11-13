@@ -13,9 +13,24 @@ using Microsoft.AspNetCore.Components.Authorization;
 using NLDMAP.Server.Authentication;
 using Microsoft.AspNetCore.Antiforgery;
 using MudBlazor.Services;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
+using System.Net;
 
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = 1;
+    var proxy = builder.Configuration["ReverseProxy:KnownProxy"];
+    if (!string.IsNullOrWhiteSpace(proxy)) options.KnownProxies.Add(IPAddress.Parse(proxy));
+});
+var keysPath = builder.Configuration["DataProtection:KeysPath"];
+if (!string.IsNullOrWhiteSpace(keysPath))
+    builder.Services.AddDataProtection().SetApplicationName("NLDMAP")
+        .PersistKeysToFileSystem(new DirectoryInfo(keysPath));
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -75,6 +90,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.AddMudServices();
 
 var app = builder.Build();
+app.UseForwardedHeaders();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -109,16 +125,16 @@ if (app.Configuration.GetValue<bool>("SeedRoles"))
 
 if (app.Configuration.GetValue<bool>("SeedIdentity"))
 {
-    if (!app.Environment.IsDevelopment())
+    if (!app.Environment.IsDevelopment() && !app.Configuration.GetValue<bool>("BootstrapAdmin:Enabled"))
     {
-        throw new InvalidOperationException("La inicialización de Identity solo esta habilitada en el entorno de desarrollo");
+        throw new InvalidOperationException("Para inicializar Identity en producción habilita BootstrapAdmin:Enabled únicamente en el comando de inicialización.");
     }
     var email = app.Configuration["BootstrapAdmin:Email"];
     var password = app.Configuration["BootstrapAdmin:Password"];
 
     if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
     {
-        throw new InvalidOperationException("Falta configurar el correo o la contrasena en BootstrapAdmin en user secrets");
+        throw new InvalidOperationException("Falta configurar BootstrapAdmin:Email y BootstrapAdmin:Password.");
     }
 
     await using var scope = app.Services.CreateAsyncScope();
@@ -140,6 +156,7 @@ app.MapRazorComponents<App>()
 
 // Publica las rutas HTTP de los controladores
 app.MapControllers();
+app.MapGet("/health/live", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
 app.MapPost("/Account/Logout", async Task<IResult> (
     HttpContext context,

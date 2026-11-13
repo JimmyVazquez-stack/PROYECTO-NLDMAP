@@ -29,6 +29,8 @@ node_modules/
 .env.*
 !.env.example
 !.env.sample
+!deploy/.env.production.example
+**/App_Data/
 appsettings.Local.json
 appsettings.*.Local.json
 

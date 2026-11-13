@@ -1,0 +1,10 @@
+**/bin
+**/obj
+.git
+**/.env
+**/.env.*
+**/App_Data
+**/*.eml
+**/*.pfx
+**/*.key
+**/core*

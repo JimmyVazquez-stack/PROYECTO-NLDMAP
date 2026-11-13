@@ -1,0 +1,62 @@
+name: CI NLDMAP Server
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet build NLDMAP.slnx -c Release
+      - name: Comprobar snapshot de migraciones
+        run: |
+          dotnet tool install --tool-path /tmp/ef dotnet-ef --version 10.0.13
+          /tmp/ef/dotnet-ef migrations has-pending-model-changes --project NLDMAP.Infrastructure --startup-project NLDMAP.Server --configuration Release --no-build
+        env:
+          ConnectionStrings__DefaultConnection: Host=localhost;Database=check;Username=check;Password=check
+      - name: Construir servidor
+        run: docker build -f deploy/Dockerfile -t nldmap-server:ci .
+      - name: Probar inicialización y persistencia en contenedores
+        run: bash scripts/smoke-deployment.sh
+      - name: Paquete de configuración para el servidor
+        run: tar -czf nldmap-deploy.tar.gz compose.production.yml deploy/Caddyfile deploy/.env.production.example deploy/mongo deploy/postgres deploy/README.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nldmap-deploy-${{ github.sha }}
+          path: nldmap-deploy.tar.gz
+  publish:
+    needs: verify
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/jimmyvazquez-stack/nldmap-server:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/JimmyVazquez-stack/PROYECTO-NLDMAP
+            org.opencontainers.image.revision=${{ github.sha }}
