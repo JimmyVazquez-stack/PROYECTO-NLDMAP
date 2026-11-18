@@ -20,7 +20,6 @@ using System.Net;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Nuevo
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
@@ -150,16 +149,16 @@ if (app.Configuration.GetValue<bool>("SeedRoles"))
 
 if (app.Configuration.GetValue<bool>("SeedIdentity"))
 {
-    if (!app.Environment.IsDevelopment())
+    if (!app.Environment.IsDevelopment() && !app.Configuration.GetValue<bool>("BootstrapAdmin:Enabled"))
     {
-        throw new InvalidOperationException("La inicialización de Identity solo esta habilitada en el entorno de desarrollo");
+        throw new InvalidOperationException("Para inicializar Identity en producción habilita BootstrapAdmin:Enabled únicamente en el comando de inicialización.");
     }
     var email = app.Configuration["BootstrapAdmin:Email"];
     var password = app.Configuration["BootstrapAdmin:Password"];
 
     if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
     {
-        throw new InvalidOperationException("Falta configurar el correo o la contrasena en BootstrapAdmin en user secrets");
+        throw new InvalidOperationException("Falta configurar BootstrapAdmin:Email y BootstrapAdmin:Password.");
     }
 
     await using var scope = app.Services.CreateAsyncScope();
