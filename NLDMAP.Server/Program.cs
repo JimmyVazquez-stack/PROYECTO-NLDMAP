@@ -43,7 +43,13 @@ builder.Services.AddControllers();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 // El servicio de autenticación se configura para usar cookies y el esquema de identidad predeterminado
-builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme).AddIdentityCookies();
+var authentication = builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme);
+authentication.AddIdentityCookies();
+authentication.AddBearerToken(MobileAuthController.Scheme, options =>
+{
+    options.BearerTokenExpiration = TimeSpan.FromMinutes(15);
+    options.RefreshTokenExpiration = TimeSpan.FromDays(7);
+});
 
 // Se registran los servicios de para la comprobación de autorización y se habilita la política de autorización predeterminada
 builder.Services.AddAuthorization(options =>
@@ -58,7 +64,11 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-        HttpMethods.IsPost(context.Request.Method) && context.Request.Path.StartsWithSegments("/Account")
+        HttpMethods.IsPost(context.Request.Method) &&
+        (context.Request.Path.StartsWithSegments("/Account") ||
+         context.Request.Path.StartsWithSegments("/api/mobile/auth/login") ||
+         context.Request.Path.StartsWithSegments("/api/mobile/auth/refresh"))||
+         context.Request.Path.StartsWithSegments("/api/mobile/auth/register")
             ? RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "local", _ =>
                 new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 })
             : RateLimitPartition.GetNoLimiter("other"));
@@ -68,7 +78,11 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 
-builder.Services.Configure<SecurityStampValidatorOptions>(options => options.ValidationInterval = TimeSpan.FromMinutes(1));
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+{
+    options.ValidationInterval = TimeSpan.FromMinutes(30);
+});
+
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/Account/Login";
@@ -89,6 +103,10 @@ builder.Services.ConfigureApplicationCookie(options =>
 // Se registran los servicios de MudBlazor
 builder.Services.AddMudServices();
 
+builder.Services.AddMemoryCache();
+
+builder.Services.AddScoped<AdministrationAccessCache>();
+
 var app = builder.Build();
 app.UseForwardedHeaders();
 
@@ -99,8 +117,14 @@ if (!app.Environment.IsDevelopment())
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
-app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+
+app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api/mobile"), web =>
+    web.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true));
 app.UseHttpsRedirection();
+
+
+app.MapStaticAssets()
+    .ShortCircuit();
 
 // Se configura el middleware de autenticación y autorización
 app.UseAuthentication();
@@ -159,27 +183,24 @@ app.MapControllers();
 app.MapGet("/health/live", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
 app.MapPost("/Account/Logout", async Task<IResult> (
-    HttpContext context,
-    IAntiforgery antiforgery,
-    SignInManager<ApplicationUser> signInManager) =>
-{
-    try
+        HttpContext context,
+        IAntiforgery antiforgery,
+        SignInManager<ApplicationUser> signInManager) =>
     {
-        await antiforgery.ValidateRequestAsync(context);
-    }
-    catch (AntiforgeryValidationException)
-    {
-        return Results.BadRequest(
-            "No se pudo validar la solicitud. Recarga la página e inténtalo nuevamente.");
-    }
+        try
+        {
+            await antiforgery.ValidateRequestAsync(context);
+        }
+        catch (AntiforgeryValidationException)
+        {
+            return Results.BadRequest(
+                "No se pudo validar la solicitud. Recarga la página e inténtalo nuevamente.");
+        }
 
-    await signInManager.SignOutAsync();
+        await signInManager.SignOutAsync();
 
-    return Results.LocalRedirect("/Account/Login");
-})
-.RequireAuthorization();
+        return Results.LocalRedirect("/Account/Login");
+    })
+    .RequireAuthorization();
 
 app.Run();
-
-// Permite probar el servidor real con WebApplicationFactory.
-public partial class Program { }

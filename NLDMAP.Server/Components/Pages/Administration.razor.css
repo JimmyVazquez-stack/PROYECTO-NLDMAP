@@ -1,0 +1,175 @@
+
+/* =========================================
+   ENCABEZADO
+   ========================================= */
+
+.admin-description {
+    color: var(--mud-palette-text-secondary);
+}
+
+
+/* =========================================
+   ENLACES DE LOS MÓDULOS
+   ========================================= */
+
+.admin-module-link {
+    display: block;
+    height: 100%;
+
+    color: inherit;
+    text-decoration: none;
+}
+
+.admin-module-link:hover {
+    text-decoration: none;
+}
+
+
+/* =========================================
+   TARJETAS
+   ========================================= */
+
+.admin-module-card {
+    height: 100%;
+
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--mud-default-borderradius);
+
+    background-color: var(--mud-palette-surface);
+
+    transition:
+            transform 0.2s ease,
+            box-shadow 0.2s ease,
+            border-color 0.2s ease;
+}
+
+/* Efecto al pasar el cursor */
+
+.admin-module-link:hover .admin-module-card {
+    transform: translateY(-4px);
+
+    border-color: var(--mud-palette-primary);
+
+    box-shadow: var(--mud-elevation-4);
+}
+
+/* Navegación por teclado */
+
+.admin-module-link:focus-visible {
+    outline: 2px solid var(--mud-palette-primary);
+    outline-offset: 4px;
+    border-radius: var(--mud-default-borderradius);
+}
+
+
+/* =========================================
+   CONTENIDO DE TARJETAS
+   ========================================= */
+
+
+/* =========================================
+   TARJETAS DEL DASHBOARD
+   ========================================= */
+
+.admin-module-link ::deep .admin-module-card {
+    height: 100%;
+
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--mud-default-borderradius);
+
+    background-color: var(--mud-palette-surface);
+
+    transition:
+            border-color 0.2s ease,
+            box-shadow 0.2s ease,
+            transform 0.2s ease;
+}
+
+/* Hover */
+
+.admin-module-link:hover ::deep .admin-module-card {
+    transform: translateY(-3px);
+
+    border-color: var(--mud-palette-primary);
+    box-shadow: var(--mud-elevation-4);
+}
+
+/* Accesibilidad */
+
+.admin-module-link:focus-visible {
+    outline: 2px solid var(--mud-palette-primary);
+    outline-offset: 3px;
+}
+
+
+/* =========================================
+   ICONOS
+   ========================================= */
+
+.admin-module-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 52px;
+    height: 52px;
+
+    border-radius: var(--mud-default-borderradius);
+
+    background-color: var(--mud-palette-action-default-hover);
+}
+
+
+/* =========================================
+   TEXTOS
+   ========================================= */
+
+.admin-module-title {
+    font-weight: 600;
+    color: var(--mud-palette-text-primary);
+}
+
+.admin-module-description {
+    color: var(--mud-palette-text-secondary);
+    line-height: 1.5;
+}
+
+
+/* =========================================
+   ACCIÓN DE NAVEGACIÓN
+   ========================================= */
+
+.admin-module-action {
+    margin-top: auto;
+    padding-top: 12px;
+
+    color: var(--mud-palette-primary);
+    font-weight: 500;
+}
+
+
+/* =========================================
+   RESPONSIVIDAD
+   ========================================= */
+
+@media (max-width: 600px) {
+
+    .admin-module-content {
+        min-height: 180px;
+        padding: 20px;
+    }
+
+}
+
+/* Respetar preferencias de movimiento */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .admin-module-card {
+        transition: none;
+    }
+
+    .admin-module-link:hover .admin-module-card {
+        transform: none;
+    }
+}
