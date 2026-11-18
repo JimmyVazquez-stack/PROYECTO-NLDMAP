@@ -1,80 +1,216 @@
 ﻿@page "/admin"
-@rendermode InteractiveServer
 @layout AdministrationLayout
 @attribute [Authorize(Policy = PermissionNames.Access)]
 @inherits AdminPageBase
 
 <PageTitle>Administración | NLDMAP</PageTitle>
 
-<MudStack Spacing="3">
-    <div>
-        <MudText Typo="Typo.h4" HtmlTag="h1">
+<MudStack Spacing="4">
+
+    @* =====================================
+       ENCABEZADO
+       ===================================== *@
+
+    <MudStack Spacing="2">
+
+        <MudText Typo="Typo.h4"
+                 HtmlTag="h1"
+                 Class="fw-bold">
             Administración del sistema
         </MudText>
-        <MudText Typo="Typo.body2" Color="Color.Secondary">
-            Gestiona las cuentas, los accesos, los catálogos y el historial de cambios.
+
+        <MudText Typo="Typo.body1"
+                 Class="admin-description">
+            Gestiona los usuarios, permisos, catálogos
+            y demás herramientas administrativas.
         </MudText>
-    </div>
+
+        @if (Access is { } currentAccess)
+        {
+            <MudStack Row="true"
+                      AlignItems="AlignItems.Center"
+                      Spacing="1">
+
+                <MudIcon
+                    Icon="@Icons.Material.Outlined.AccountCircle"
+                    Color="Color.Primary"
+                    Size="Size.Small" />
+
+                <MudText Typo="Typo.body2">
+                    Sesión:
+                    <strong>@currentAccess.Name</strong>
+                </MudText>
+
+            </MudStack>
+        }
+
+    </MudStack>
+
+
+    @* =====================================
+       MENSAJES Y ESTADO DE CARGA
+       ===================================== *@
 
     @if (!string.IsNullOrEmpty(Error))
     {
-        <MudAlert Severity="Severity.Error" role="alert">@Error</MudAlert>
+        <MudAlert Severity="Severity.Error"
+                  Variant="Variant.Outlined"
+                  role="alert">
+            @Error
+        </MudAlert>
     }
 
     @if (!string.IsNullOrEmpty(Notice))
     {
-        <MudAlert Severity="Severity.Success" role="status">@Notice</MudAlert>
+        <MudAlert Severity="Severity.Success"
+                  Variant="Variant.Outlined"
+                  role="status">
+            @Notice
+        </MudAlert>
     }
 
     @if (Busy)
     {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true"
-                           aria-label="Cargando administración" />
+        <MudProgressLinear
+            Color="Color.Primary"
+            Indeterminate="true"
+            aria-label="Cargando administración" />
     }
+
+
+    @* =====================================
+       MÓDULOS ADMINISTRATIVOS
+       ===================================== *@
 
     @if (Access is { } access)
     {
-        <MudText Typo="Typo.body2">Sesión: <strong>@access.Name</strong></MudText>
-
         <MudGrid Spacing="3">
-            @foreach (var module in modules.Where(module => access.Allows(module.Permission)))
+
+            @foreach (var module in modules.Where(
+                module => access.Allows(module.Permission)))
             {
                 <MudItem xs="12" sm="6" lg="4">
+
                     <a href="@module.Url"
-                       style="display: block; height: 100%; color: inherit; text-decoration: none;">
-                        <MudCard Elevation="1" Style="height: 100%;">
-                            <MudCardContent>
-                                <MudText Typo="Typo.h6" HtmlTag="h2">
+                       class="admin-module-link">
+
+                        <MudCard Elevation="0"
+                                 Class="admin-module-card">
+
+                            <MudCardContent Class="admin-module-content">
+
+                                @* Icono del módulo *@
+
+                                <MudPaper Elevation="0"
+                                          Class="admin-module-icon">
+
+                                    <MudIcon
+                                        Icon="@module.Icon"
+                                        Color="Color.Primary"
+                                        Size="Size.Large" />
+
+                                </MudPaper>
+
+                                @* Nombre y descripción *@
+
+                                <MudText Typo="Typo.h6"
+                                         HtmlTag="h2"
+                                         Class="admin-module-title">
                                     @module.Name
                                 </MudText>
-                                <MudText Typo="Typo.body2">
+
+                                <MudText Typo="Typo.body2"
+                                         Class="admin-module-description">
                                     @module.Description
                                 </MudText>
+
+                                <MudSpacer />
+
+                                @* Indicador de navegación *@
+
+                                <MudStack Row="true"
+                                          AlignItems="AlignItems.Center"
+                                          Justify="Justify.FlexEnd"
+                                          Spacing="1"
+                                          Class="admin-module-action">
+
+                                    <MudText Typo="Typo.body2">
+                                        Acceder
+                                    </MudText>
+
+                                    <MudIcon
+                                        Icon="@Icons.Material.Filled.ArrowForward"
+                                        Size="Size.Small" />
+
+                                </MudStack>
+
                             </MudCardContent>
+
                         </MudCard>
+
                     </a>
+
                 </MudItem>
             }
+
         </MudGrid>
     }
+
 </MudStack>
 
+
 @code {
-    private static readonly (string Name, string Description, string Url, string Permission)[] modules =
+
+    // =====================================
+    // MÓDULOS DEL SISTEMA
+    // =====================================
+
+    private static readonly (
+        string Name,
+        string Description,
+        string Url,
+        string Permission,
+        string Icon
+    )[] modules =
     [
-        ("Usuarios", "Consulta perfiles, estados y roles.",
-            "/admin/usuarios", PermissionNames.UsersRead),
+        (
+            "Usuarios",
+            "Consulta perfiles, estados y roles de los usuarios.",
+            "/admin/usuarios",
+            PermissionNames.UsersRead,
+            Icons.Material.Outlined.People
+        ),
 
-        ("Roles y permisos", "Define qué puede realizar cada rol.",
-            "/admin/roles", PermissionNames.RolesRead),
+        (
+            "Roles y permisos",
+            "Administra los roles y sus permisos de acceso.",
+            "/admin/roles",
+            PermissionNames.RolesRead,
+            Icons.Material.Outlined.AdminPanelSettings
+        ),
 
-        ("Auditoría", "Revisa responsables y cambios registrados.",
-            "/admin/auditoria", PermissionNames.AuditRead),
+        (
+            "Auditoría",
+            "Consulta el historial de actividades y cambios.",
+            "/admin/auditoria",
+            PermissionNames.AuditRead,
+            Icons.Material.Outlined.History
+        ),
 
-        ("Invitaciones", "Incorpora personal con enlaces temporales.",
-            "/admin/invitaciones", PermissionNames.InvitationsManage),
+        (
+            "Invitaciones",
+            "Gestiona invitaciones para nuevos usuarios.",
+            "/admin/invitaciones",
+            PermissionNames.InvitationsManage,
+            Icons.Material.Outlined.Mail
+        ),
 
-        ("Catálogos", "Consulta y administra las opciones que se usan en los reportes.",
-            "/admin/catalogos", PermissionNames.CatalogsRead)
+        (
+            "Catálogos",
+            "Administra las opciones utilizadas en los reportes.",
+            "/admin/catalogos",
+            PermissionNames.CatalogsRead,
+            Icons.Material.Outlined.Folder
+        )
     ];
 }
