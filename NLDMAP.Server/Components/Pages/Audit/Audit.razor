@@ -2,44 +2,200 @@
 @layout AdministrationLayout
 @attribute [Authorize(Policy = PermissionNames.AuditRead)]
 @inherits AdminPageBase
+@using System.Text.Json
+
 <PageTitle>Auditoría | NLDMAP</PageTitle>
-<h1 class="h2">Auditoría administrativa</h1>
-<p class="text-body-secondary">Consulta quién realizó cada cambio. Fechas y horas en UTC.</p>
-<OperationStatus Error="@Error" Notice="@Notice" Busy="Busy" />
-<EditForm Model="filters" OnValidSubmit="SearchAsync" FormName="audit-filters" class="card card-body mb-3">
-    <div class="row g-3 align-items-end">
-        <div class="col-md-4"><label for="audit-actor" class="form-label">Responsable</label><InputText id="audit-actor" class="form-control" @bind-Value="filters.Actor" maxlength="100" /></div>
-        <div class="col-md-4"><label for="audit-operation" class="form-label">Operación</label><InputSelect id="audit-operation" class="form-select" @bind-Value="filters.Operation"><option value="">Todas</option>@foreach (var op in operations) { <option value="@op">@op</option> }</InputSelect></div>
-        <div class="col-md-4"><label for="audit-target" class="form-label">Cuenta, rol o identificador</label><InputText id="audit-target" class="form-control" @bind-Value="filters.Target" maxlength="100" /></div>
-        <div class="col-md-4"><label for="audit-from" class="form-label">Desde (UTC)</label><InputDate id="audit-from" class="form-control" @bind-Value="filters.From" /></div>
-        <div class="col-md-4"><label for="audit-to" class="form-label">Hasta (UTC, incluido)</label><InputDate id="audit-to" class="form-control" @bind-Value="filters.To" /></div>
-        <div class="col-md-4"><button type="submit" class="btn btn-primary" disabled="@Busy">Consultar</button></div>
+
+<MudStack Spacing="3">
+    <div>
+        <MudText Typo="Typo.h4" HtmlTag="h1">Auditoría administrativa</MudText>
+        <MudText Typo="Typo.body2">Consulta quién realizó cada cambio. Fechas y horas en UTC.</MudText>
     </div>
-</EditForm>
-@if (entries is not null)
-{
-    <div class="card shadow-sm"><div class="table-responsive"><table class="table align-middle mb-0"><thead class="table-light"><tr><th>Fecha UTC</th><th>Responsable</th><th>Operación</th><th>Registro afectado</th><th>Detalle</th></tr></thead><tbody>
-    @foreach (var e in entries.Items)
+
+    @if (!string.IsNullOrEmpty(Error))
     {
-        <tr><td class="text-nowrap small">@e.Date.ToString("yyyy-MM-dd HH:mm:ss")</td><td>@e.Actor</td><td class="small">@e.Operation</td><td>@e.TargetName</td><td><button class="btn btn-outline-primary btn-sm" @onclick="() => selected = e">Ver cambios</button></td></tr>
+        <MudAlert Severity="Severity.Error" role="alert">@Error</MudAlert>
     }
-    @if (entries.Items.Count == 0) { <tr><td colspan="5" class="text-center py-5 text-body-secondary">No hay movimientos con estos filtros.</td></tr> }
-    </tbody></table></div><Pager Page="entries.Page" Pages="entries.TotalPages" Total="entries.Total" Busy="Busy" Changed="ChangePageAsync" /></div>
-}
-@if (selected is not null)
-{
-    <section class="card card-body mt-4"><div class="d-flex justify-content-between gap-3"><h2 class="h5">Movimiento #@selected.Id</h2><button class="btn btn-outline-secondary btn-sm" @onclick="() => selected = null">Cerrar detalle</button></div><p class="small text-body-secondary">@selected.TargetType · @selected.TargetId</p><div class="row g-3"><div class="col-lg-6"><h3 class="h6">Antes</h3><pre class="p-3 bg-body-tertiary border rounded text-wrap">@Pretty(selected.BeforeJson)</pre></div><div class="col-lg-6"><h3 class="h6">Después</h3><pre class="p-3 bg-body-tertiary border rounded text-wrap">@Pretty(selected.AfterJson)</pre></div></div></section>
-}
+
+    @if (Busy)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true"
+                           aria-label="Consultando auditoría" />
+    }
+
+    <MudPaper Class="pa-4" Elevation="1">
+        <EditForm Model="filters" OnValidSubmit="SearchAsync" FormName="audit-filters">
+            <MudGrid Spacing="2" Class="align-center">
+                <MudItem xs="12" md="4">
+                    <MudTextField T="string" Label="Responsable" Variant="Variant.Outlined"
+                                  @bind-Value="filters.Actor" MaxLength="100"
+                                  Immediate="true" Disabled="Busy" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudSelect T="string" Label="Operación" Placeholder="Todas" Variant="Variant.Outlined"
+                               @bind-Value="filters.Operation" Disabled="Busy">
+                        <MudSelectItem T="string" Value="@string.Empty">Todas</MudSelectItem>
+                        @foreach (var operation in operations)
+                        {
+                            <MudSelectItem T="string" Value="@operation">@operation</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField T="string" Label="Cuenta, rol o identificador" Variant="Variant.Outlined"
+                                  @bind-Value="filters.Target" MaxLength="100"
+                                  Immediate="true" Disabled="Busy" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudDatePicker Label="Desde (UTC)" Variant="Variant.Outlined"
+                                   @bind-Date="filters.From" Clearable="true" Disabled="Busy" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudDatePicker Label="Hasta (UTC, incluido)" Variant="Variant.Outlined"
+                                   @bind-Date="filters.To" Clearable="true" Disabled="Busy" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled"
+                               Color="Color.Primary" Disabled="Busy">
+                        Consultar
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </EditForm>
+    </MudPaper>
+
+    @if (entries is not null)
+    {
+        <MudTable T="AuditRow" Items="entries.Items" Context="entry"
+                  Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
+            <HeaderContent>
+                <MudTh>Fecha UTC</MudTh>
+                <MudTh>Responsable</MudTh>
+                <MudTh>Operación</MudTh>
+                <MudTh>Registro afectado</MudTh>
+                <MudTh>Detalle</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Fecha UTC">@entry.Date.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss")</MudTd>
+                <MudTd DataLabel="Responsable">@entry.Actor</MudTd>
+                <MudTd DataLabel="Operación">@entry.Operation</MudTd>
+                <MudTd DataLabel="Registro afectado">@entry.TargetName</MudTd>
+                <MudTd DataLabel="Detalle">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                               Disabled="Busy" OnClick="() => selected = entry">
+                        Ver cambios
+                    </MudButton>
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Class="pa-4">No hay movimientos con estos filtros.</MudText>
+            </NoRecordsContent>
+        </MudTable>
+
+        <MudStack Row="true" AlignItems="AlignItems.Center"
+                  Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
+            <MudText Typo="Typo.body2">@entries.Total resultados</MudText>
+            @if (entries.TotalPages > 1)
+            {
+                <MudPagination Count="entries.TotalPages" Selected="entries.Page"
+                               SelectedChanged="ChangePageAsync" Disabled="Busy" Color="Color.Primary" />
+            }
+        </MudStack>
+    }
+
+    @if (selected is { } detail)
+    {
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudStack Spacing="2">
+                <MudStack Row="true" AlignItems="AlignItems.Center"
+                          Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
+                    <MudText Typo="Typo.h6" HtmlTag="h2">Movimiento #@detail.Id</MudText>
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                               OnClick="() => selected = null">
+                        Cerrar detalle
+                    </MudButton>
+                </MudStack>
+                <MudText Typo="Typo.body2">@detail.TargetType · @detail.TargetId</MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" lg="6">
+                        <MudText Typo="Typo.subtitle2" HtmlTag="h3">Antes</MudText>
+                        <MudPaper Outlined="true" Class="pa-3">
+                            <pre style="margin: 0; white-space: pre-wrap; overflow-wrap: anywhere;">@Pretty(detail.BeforeJson)</pre>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" lg="6">
+                        <MudText Typo="Typo.subtitle2" HtmlTag="h3">Después</MudText>
+                        <MudPaper Outlined="true" Class="pa-3">
+                            <pre style="margin: 0; white-space: pre-wrap; overflow-wrap: anywhere;">@Pretty(detail.AfterJson)</pre>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            </MudStack>
+        </MudPaper>
+    }
+</MudStack>
+
 @code {
-    private sealed class Filters { public string Actor { get; set; } = ""; public string Operation { get; set; } = ""; public string Target { get; set; } = ""; public DateTime? From { get; set; } public DateTime? To { get; set; } }
-    private Filters filters = new();
+    private sealed class Filters
+    {
+        public string Actor { get; set; } = "";
+        public string Operation { get; set; } = "";
+        public string Target { get; set; } = "";
+        public DateTime? From { get; set; }
+        public DateTime? To { get; set; }
+    }
+
+    private static readonly string[] operations =
+    [
+        "User.ProfileUpdated", "User.StatusChanged", "User.RolesChanged", "User.PasswordReset",
+        "Role.Created", "Role.Updated", "Role.Deleted",
+        "Invitation.Created", "Invitation.Resent", "Invitation.Revoked", "Invitation.Accepted"
+    ];
+
+    private static readonly JsonSerializerOptions indentedJson = new() { WriteIndented = true };
+    private readonly Filters filters = new();
+    private AuditQuery appliedQuery = new();
     private PageResult<AuditRow>? entries;
     private AuditRow? selected;
-    private int page = 1;
-    private readonly string[] operations = ["User.ProfileUpdated", "User.StatusChanged", "User.RolesChanged", "User.PasswordReset", "Role.Created", "Role.Updated", "Role.Deleted", "Invitation.Created", "Invitation.Resent", "Invitation.Revoked", "Invitation.Accepted"];
-    protected override async Task LoadAsync() => entries = await Admin.GetAuditAsync(new(filters.Actor, filters.Operation, filters.Target, Utc(filters.From), Utc(filters.To?.AddDays(1)), page));
-    private static DateTimeOffset? Utc(DateTime? date) => date.HasValue ? new DateTimeOffset(DateTime.SpecifyKind(date.Value.Date, DateTimeKind.Utc)) : null;
-    private Task SearchAsync() => RunAsync(async () => { page = 1; selected = null; await LoadAsync(); });
-    private Task ChangePageAsync(int value) => RunAsync(async () => { page = value; selected = null; await LoadAsync(); });
-    private static string Pretty(string json) => System.Text.Json.JsonSerializer.Serialize(System.Text.Json.JsonDocument.Parse(json).RootElement, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+
+    protected override Task LoadAsync() => LoadEntriesAsync(appliedQuery);
+
+    private async Task LoadEntriesAsync(AuditQuery query)
+    {
+        entries = await Admin.GetAuditAsync(query);
+        appliedQuery = query;
+        selected = null;
+    }
+
+    private Task SearchAsync() => RunAsync(() =>
+    {
+        var from = Utc(filters.From);
+        var to = Utc(filters.To);
+        if (from.HasValue && to.HasValue && from.Value > to.Value)
+            throw new AdministrationException("La fecha Desde no puede ser posterior a la fecha Hasta.");
+
+        // El límite superior de la consulta es exclusivo.
+        var toExclusive = to == Utc(DateTime.MaxValue.Date) ? null : to?.AddDays(1);
+        return LoadEntriesAsync(new AuditQuery(filters.Actor, filters.Operation, filters.Target,
+                                              from, toExclusive));
+    });
+
+    private Task ChangePageAsync(int page) =>
+        RunAsync(() => LoadEntriesAsync(appliedQuery with { Page = page }));
+
+    private static DateTimeOffset? Utc(DateTime? date) =>
+        date.HasValue ? new DateTimeOffset(DateTime.SpecifyKind(date.Value.Date, DateTimeKind.Utc)) : null;
+
+    private static string Pretty(string json)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            return JsonSerializer.Serialize(document.RootElement, indentedJson);
+        }
+        catch (JsonException)
+        {
+            return json;
+        }
+    }
 }

@@ -34,6 +34,8 @@ public static class MongoCatalogRegistration
         services.AddScoped<TezService>();
         services.AddSingleton<IRegionCorporalStore, MongoRegionCorporalStore>();
         services.AddScoped<RegionCorporalService>();
+        services.AddSingleton<ITipoSenaStore, MongoTipoSenaStore>();
+        services.AddScoped<TipoSenaService>();
         return services;
     }
 }

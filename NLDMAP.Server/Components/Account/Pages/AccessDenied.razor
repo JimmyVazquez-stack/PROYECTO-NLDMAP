@@ -1,0 +1,59 @@
+@page "/Account/AccessDenied"
+@layout AuthLayout
+@attribute [AllowAnonymous]
+@attribute [ExcludeFromInteractiveRouting]
+
+@using Microsoft.AspNetCore.Http
+@using NLDMAP.Server.Theming
+
+<PageTitle>Acceso denegado | NLDMAP</PageTitle>
+
+<MudThemeProvider Theme="@theme" IsDarkMode="@IsDarkMode" />
+
+<main class="access-denied" aria-labelledby="access-denied-title">
+    <MudContainer MaxWidth="MaxWidth.Medium">
+        <div class="access-card">
+            <div class="access-symbol" aria-hidden="true">
+                <div class="access-symbol-core">
+                    <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Large" />
+                </div>
+            </div>
+
+            <div class="access-content">
+                <MudStack Spacing="3">
+                    <MudText Typo="Typo.overline" Style="color: var(--mud-palette-text-secondary);">
+                        Búsqueda Tlaxcala
+                    </MudText>
+                    <MudText id="access-denied-title" Typo="Typo.h4" HtmlTag="h1">
+                        Acceso denegado
+                    </MudText>
+                    <MudText Typo="Typo.body1">
+                        Tu cuenta no tiene permiso para acceder a esta página.
+                    </MudText>
+                    <MudText Typo="Typo.body2" Style="color: var(--mud-palette-text-secondary);">
+                        Si necesitas acceso, solicítalo al administrador del sistema.
+                    </MudText>
+
+                    <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap" Class="mt-2">
+                        <MudButton Href="/" Color="Color.Primary" Variant="Variant.Filled"
+                                   StartIcon="@Icons.Material.Filled.Home">
+                            Volver al inicio
+                        </MudButton>
+                        <MudButton Href="/Account/Login" Variant="Variant.Outlined"
+                                   data-enhance-nav="false">
+                            Entrar con otra cuenta
+                        </MudButton>
+                    </MudStack>
+                </MudStack>
+            </div>
+        </div>
+    </MudContainer>
+</main>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private readonly MudTheme theme = NldmapTheme.Create();
+    private bool IsDarkMode => HttpContext?.Request.Cookies["nldmap-theme"] != "light";
+}

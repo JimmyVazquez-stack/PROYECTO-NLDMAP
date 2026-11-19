@@ -5,6 +5,36 @@ namespace NLDMAP.Server.Theming;
 
 public static class NldmapTheme
 {
+    public static MudTheme CreatePublic()
+    {
+        var theme = new MudTheme
+        {
+            LayoutProperties = new LayoutProperties
+            {
+                DefaultBorderRadius = "12px"
+            },
+            PaletteLight = new PaletteLight
+            {
+                Primary = "#155E59",
+                PrimaryContrastText = "#FFFFFF",
+                Secondary = "#496B60",
+                SecondaryContrastText = "#FFFFFF",
+                Background = "#F6F1E6",
+                BackgroundGray = "#E7EFE9",
+                Surface = "#FFFFFF",
+                TextPrimary = "#202E2B",
+                TextSecondary = "#475A54",
+                AppbarBackground = "#155E59",
+                AppbarText = "#FFFFFF",
+                Divider = "#D1DDD6",
+                LinesDefault = "#D1DDD6"
+            }
+        };
+
+        theme.Typography.Default.FontFamily = ["system-ui", "-apple-system", "Segoe UI", "sans-serif"];
+        return theme;
+    }
+
     public static MudTheme Create()
     {
         var theme = new MudTheme

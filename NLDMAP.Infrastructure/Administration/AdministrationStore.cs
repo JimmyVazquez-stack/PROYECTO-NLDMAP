@@ -54,9 +54,12 @@ public sealed partial class AdministrationStore(IServiceScopeFactory scopeFactor
     internal static async Task<AdminAccess> AccessForUserAsync(ApplicationDbContext db, ApplicationUser user)
     {
         var roleIds = db.UserRoles.Where(r => r.UserId == user.Id).Select(r => r.RoleId);
-        var administrator = await db.Roles.AnyAsync(r => roleIds.Contains(r.Id) && r.Name == RoleNames.Administrator);
+        var staffRoleIds = db.Roles.Where(r => roleIds.Contains(r.Id) &&
+            r.NormalizedName != RoleNames.Guest.ToUpperInvariant() &&
+            r.NormalizedName != RoleNames.Reporter.ToUpperInvariant()).Select(r => r.Id);
+        var administrator = await db.Roles.AnyAsync(r => staffRoleIds.Contains(r.Id) && r.Name == RoleNames.Administrator);
         var permissions = administrator ? PermissionNames.Catalog.Keys.ToArray() :
-            (await db.RoleClaims.Where(c => roleIds.Contains(c.RoleId) && c.ClaimType == PermissionNames.ClaimType)
+            (await db.RoleClaims.Where(c => staffRoleIds.Contains(c.RoleId) && c.ClaimType == PermissionNames.ClaimType)
                 .Select(c => c.ClaimValue!).Distinct().ToArrayAsync()).Where(PermissionNames.Catalog.ContainsKey).ToArray();
         return new(user.Id, user.Email ?? user.UserName ?? user.Id, administrator, permissions);
     }
@@ -147,6 +150,8 @@ public sealed partial class AdministrationStore(IServiceScopeFactory scopeFactor
         var ids = roleIds.Distinct().ToArray();
         var roles = await db.Roles.Where(r => ids.Contains(r.Id)).ToArrayAsync();
         if (roles.Length != ids.Length) throw new AdministrationException("Uno de los roles ya no existe.");
+        if (roles.Any(r => RoleNames.IsCitizenRole(r.Name)))
+            throw new AdministrationException("Los roles públicos se asignan al registrar o completar el perfil.");
         if (!access.IsAdministrator)
         {
             var granted = await db.RoleClaims.Where(c => ids.Contains(c.RoleId) && c.ClaimType == PermissionNames.ClaimType)
@@ -161,8 +166,10 @@ public sealed partial class AdministrationStore(IServiceScopeFactory scopeFactor
     {
         var u = await UserAsync(o, input.UserId, input.ConcurrencyStamp);
         var roles = await ValidateGrantAsync(o.Db, o.Access, input.RoleIds);
-        var names = roles.Select(r => r.Name!).ToArray();
         var previous = (await o.Users.GetRolesAsync(u)).ToArray();
+        if (roles.Length > 0 && previous.Any(RoleNames.IsCitizenRole))
+            throw new AdministrationException("Las cuentas públicas no reciben roles internos. Invita una cuenta de personal.");
+        var names = roles.Select(r => r.Name!).Concat(previous.Where(RoleNames.IsCitizenRole)).ToArray();
         if (!o.Access.IsAdministrator && previous.Contains(RoleNames.Administrator))
             throw new AdministrationException("Solo un administrador puede modificar esta asignación.");
         await ProtectLastAdminAsync(o, u, !names.Contains(RoleNames.Administrator));

@@ -1,11 +1,16 @@
 ﻿using System.Net;
 using System.Net.Mail;
+using System.Net.Sockets;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace NLDMAP.Infrastructure.Identity;
 
-public sealed class AccountEmailSender(IConfiguration configuration, IHostEnvironment environment)
+public sealed class AccountEmailSender(
+    IConfiguration configuration,
+    IHostEnvironment environment,
+    ILogger<AccountEmailSender> logger)
 {
     public string Link(string path, params (string Key, string Value)[] query)
     {
@@ -19,10 +24,26 @@ public sealed class AccountEmailSender(IConfiguration configuration, IHostEnviro
 
     public async Task SendAsync(string recipient, string subject, string text)
     {
-        using var message = new MailMessage(configuration["Email:From"] ?? "noreply@nldmap.local", recipient, subject, text);
-        using var client = new SmtpClient();
         var mode = configuration["Email:Mode"];
-        if (environment.IsDevelopment() && string.Equals(mode, "Pickup", StringComparison.OrdinalIgnoreCase))
+        var pickup = environment.IsDevelopment() && string.Equals(mode, "Pickup", StringComparison.OrdinalIgnoreCase);
+        if (!pickup && !string.Equals(mode, "Smtp", StringComparison.OrdinalIgnoreCase))
+            throw ConfigurationError("Email:Mode");
+
+        var sender = configuration["Email:From"];
+        if (pickup && string.IsNullOrWhiteSpace(sender))
+            sender = "noreply@nldmap.local";
+        if (!MailAddress.TryCreate(sender, out var from))
+            throw ConfigurationError("Email:From");
+
+        using var message = new MailMessage
+        {
+            From = from,
+            Subject = subject,
+            Body = text
+        };
+        message.To.Add(recipient);
+        using var client = new SmtpClient();
+        if (pickup)
         {
             var directory = Path.Combine(environment.ContentRootPath, "App_Data", "mail");
             Directory.CreateDirectory(directory);
@@ -32,14 +53,42 @@ public sealed class AccountEmailSender(IConfiguration configuration, IHostEnviro
         }
         else
         {
-            if (!string.Equals(mode, "Smtp", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(configuration["Email:Host"]))
-                throw new InvalidOperationException("Configura Email:Mode=Smtp y el servidor de correo.");
-            client.Host = configuration["Email:Host"]!;
-            client.Port = configuration.GetValue("Email:Port", 587);
+            client.Host = RequiredSetting("Email:Host");
+            var configuredPort = configuration["Email:Port"];
+            var port = 587;
+            if (!string.IsNullOrWhiteSpace(configuredPort) &&
+                (!int.TryParse(configuredPort, out port) || port is < 1 or > 65535))
+                throw ConfigurationError("Email:Port");
+
+            client.Port = port;
             client.EnableSsl = true;
             client.UseDefaultCredentials = false;
-            client.Credentials = new NetworkCredential(configuration["Email:Username"], configuration["Email:Password"]);
+            client.Credentials = new NetworkCredential(RequiredSetting("Email:Username"), RequiredSetting("Email:Password"));
         }
-        await client.SendMailAsync(message);
+
+        try
+        {
+            await client.SendMailAsync(message);
+        }
+        catch (SmtpException exception)
+        {
+            var cause = exception.GetBaseException();
+            logger.LogWarning(
+                "Falló el envío de correo. Estado SMTP: {StatusCode}. Causa: {Cause}. Error de red: {NetworkError}.",
+                (int)exception.StatusCode, cause.GetType().Name, (cause as SocketException)?.SocketErrorCode);
+            throw;
+        }
+    }
+
+    private string RequiredSetting(string key)
+    {
+        var value = configuration[key];
+        return string.IsNullOrWhiteSpace(value) ? throw ConfigurationError(key) : value;
+    }
+
+    private InvalidOperationException ConfigurationError(string key)
+    {
+        logger.LogWarning("Falta configurar el correo o el valor no es válido para {Setting}.", key);
+        return new InvalidOperationException($"Revisa la configuración de {key}.");
     }
 }

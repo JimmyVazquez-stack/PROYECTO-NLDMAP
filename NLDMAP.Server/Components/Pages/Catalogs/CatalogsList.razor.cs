@@ -14,9 +14,13 @@ public partial class CatalogsList
             Nombre: "Regiones corporales",
             Descripcion: "Zonas del cuerpo que se usan al registrar señas particulares.",
             Ruta: "/admin/catalogos/regiones-corporales",
-            Disponible: false)
+            Disponible: true),
+        new(
+        Nombre: "Tipos de seña",
+        Descripcion: "Clases de señas particulares, como cicatrices o tatuajes.",
+        Ruta: "/admin/catalogos/tipos-sena",
+        Disponible: true)
     ];
-
     private sealed record CatalogEntry(
         string Nombre,
         string Descripcion,

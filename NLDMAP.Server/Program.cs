@@ -54,10 +54,13 @@ authentication.AddBearerToken(MobileAuthController.Scheme, options =>
 // Se registran los servicios de para la comprobación de autorización y se habilita la política de autorización predeterminada
 builder.Services.AddAuthorization(options =>
 {
+    options.AddPolicy(ReportCreationRequirement.Policy, policy =>
+        policy.RequireAuthenticatedUser().AddRequirements(new ReportCreationRequirement()));
     foreach (var permission in PermissionNames.Catalog.Keys.Append(PermissionNames.Access))
         options.AddPolicy(permission, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(permission)));
 });
 builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, ReportCreationAuthorizationHandler>();
 builder.Services.AddScoped<ICurrentActor, CurrentActor>();
 builder.Services.AddScoped<AdministrationService>();
 builder.Services.AddRateLimiter(options =>
@@ -66,9 +69,8 @@ builder.Services.AddRateLimiter(options =>
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
         HttpMethods.IsPost(context.Request.Method) &&
         (context.Request.Path.StartsWithSegments("/Account") ||
-         context.Request.Path.StartsWithSegments("/api/mobile/auth/login") ||
-         context.Request.Path.StartsWithSegments("/api/mobile/auth/refresh"))||
-         context.Request.Path.StartsWithSegments("/api/mobile/auth/register")
+         context.Request.Path.StartsWithSegments("/cuenta") ||
+         context.Request.Path.StartsWithSegments("/api/mobile/auth"))
             ? RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "local", _ =>
                 new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 })
             : RateLimitPartition.GetNoLimiter("other"));
@@ -90,6 +92,19 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Events.OnRedirectToLogin = context =>
+    {
+        var path = context.Request.Path;
+        var citizenPage = path.StartsWithSegments("/cuenta") || path.StartsWithSegments("/reportes");
+        context.Response.Redirect(citizenPage ? "/cuenta/entrar" : context.RedirectUri);
+        return Task.CompletedTask;
+    };
+    options.Events.OnRedirectToAccessDenied = context =>
+    {
+        context.Response.Redirect(context.Request.Path.StartsWithSegments("/reportes")
+            ? "/cuenta/perfil" : context.RedirectUri);
+        return Task.CompletedTask;
+    };
     options.Events.OnValidatePrincipal = async context =>
     {
         await SecurityStampValidator.ValidatePrincipalAsync(context);
@@ -182,25 +197,28 @@ app.MapRazorComponents<App>()
 app.MapControllers();
 app.MapGet("/health/live", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
-app.MapPost("/Account/Logout", async Task<IResult> (
-        HttpContext context,
-        IAntiforgery antiforgery,
-        SignInManager<ApplicationUser> signInManager) =>
-    {
-        try
-        {
-            await antiforgery.ValidateRequestAsync(context);
-        }
-        catch (AntiforgeryValidationException)
-        {
-            return Results.BadRequest(
-                "No se pudo validar la solicitud. Recarga la página e inténtalo nuevamente.");
-        }
-
-        await signInManager.SignOutAsync();
-
-        return Results.LocalRedirect("/Account/Login");
-    })
-    .RequireAuthorization();
+app.MapPost("/Account/Logout", SignOutAsync).RequireAuthorization();
+app.MapPost("/cuenta/salir", SignOutAsync).RequireAuthorization();
 
 app.Run();
+
+static async Task<IResult> SignOutAsync(
+    HttpContext context,
+    IAntiforgery antiforgery,
+    SignInManager<ApplicationUser> signInManager)
+{
+    try
+    {
+        await antiforgery.ValidateRequestAsync(context);
+    }
+    catch (AntiforgeryValidationException)
+    {
+        return Results.BadRequest(
+            "No se pudo validar la solicitud. Recarga la página e inténtalo nuevamente.");
+    }
+
+    await signInManager.SignOutAsync();
+
+    return Results.LocalRedirect(context.Request.Path.StartsWithSegments("/cuenta")
+        ? "/cuenta/entrar" : "/Account/Login");
+}

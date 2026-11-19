@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using NLDMAP.Application.Accounts;
+using NLDMAP.Application.Administration;
+using NLDMAP.Application.Security;
 using NLDMAP.Infrastructure.Identity;
 
 namespace NLDMAP.Server.Authentication;
@@ -15,7 +18,11 @@ namespace NLDMAP.Server.Authentication;
 public sealed class MobileAuthController(
     UserManager<ApplicationUser> users,
     SignInManager<ApplicationUser> signIn,
-    IOptionsMonitor<BearerTokenOptions> bearerOptions) : ControllerBase
+    IOptionsMonitor<BearerTokenOptions> bearerOptions,
+    ICitizenAccounts accounts,
+    IAccountLifecycle lifecycle,
+    IOptions<IdentityOptions> identity,
+    ILogger<MobileAuthController> logger) : ControllerBase
 {
     public const string Scheme = "Nldmap.Mobile";
 
@@ -24,7 +31,7 @@ public sealed class MobileAuthController(
     public async Task<IActionResult> Login(LoginRequest request)
     {
         var user = await users.FindByEmailAsync(request.Email.Trim());
-        if (user is null)
+        if (user is null || !RoleNames.IsCitizenAccount(await users.GetRolesAsync(user)))
             return InvalidLogin();
 
         var result = await signIn.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
@@ -33,40 +40,71 @@ public sealed class MobileAuthController(
 
         return SignIn(await signIn.CreateUserPrincipalAsync(user), Scheme);
     }
-    
+
     [HttpPost("register")]
     [AllowAnonymous]
-    public async Task<IActionResult> Register(RegisterRequest request)
+    public async Task<IActionResult> Register(CitizenRegistration request)
     {
-        var email = request.Email.Trim();
-        var displayName = request.DisplayName.Trim();
-
-        if (displayName.Length == 0)
+        try
         {
-            return Problem(
-                title: "Escribe tu nombre.",
-                statusCode: StatusCodes.Status400BadRequest);
+            await accounts.RegisterAsync(request);
+            return StatusCode(StatusCodes.Status201Created);
+        }
+        catch (AdministrationException exception)
+        {
+            return Problem(title: exception.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
+    }
+
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ForgotPassword(RecoveryRequest request)
+    {
+        try
+        {
+            await lifecycle.RequestPasswordResetAsync(request.Email, AccountAudience.Citizen);
+        }
+        catch (Exception)
+        {
+            logger.LogError("Error procesando una solicitud de recuperación móvil.");
         }
 
-        var user = new ApplicationUser
-        {
-            UserName = email,
-            Email = email,
-            DisplayName = displayName,
-            IsActive = true
-        };
+        return NoContent();
+    }
 
-        var result = await users.CreateAsync(user, request.Password);
+    [HttpPost("profile/email-code")]
+    [Authorize(AuthenticationSchemes = Scheme)]
+    public async Task<IActionResult> SendProfileEmailCode()
+    {
+        if (await ValidateSessionAsync(User) is null)
+            return Unauthorized();
 
-        if (!result.Succeeded)
+        try
         {
-            return Problem(
-                title: "No se pudo crear la cuenta.",
-                detail: "Revisa el correo y usa una contraseña de al menos 12 caracteres que cumpla los requisitos.",
-                statusCode: StatusCodes.Status400BadRequest);
+            await accounts.SendEmailConfirmationAsync(CurrentActor.FromPrincipal(User, identity.Value));
+            return NoContent();
         }
+        catch (AdministrationException exception)
+        {
+            return Problem(title: exception.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
+    }
 
-        return StatusCode(StatusCodes.Status201Created);
+    [HttpPost("profile")]
+    [Authorize(AuthenticationSchemes = Scheme)]
+    public async Task<ActionResult<CitizenProfile>> CompleteProfile(CitizenProfileInput request)
+    {
+        if (await ValidateSessionAsync(User) is null)
+            return Unauthorized();
+
+        try
+        {
+            return await accounts.CompleteProfileAsync(CurrentActor.FromPrincipal(User, identity.Value), request);
+        }
+        catch (AdministrationException exception)
+        {
+            return Problem(title: exception.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
     }
 
     [HttpPost("refresh")]
@@ -94,14 +132,17 @@ public sealed class MobileAuthController(
         if (user is null)
             return Unauthorized();
 
-        return new MobileProfile(user.Id, user.Email, user.DisplayName);
+        var profile = await accounts.GetProfileAsync(CurrentActor.FromPrincipal(User, identity.Value));
+        return new MobileProfile(user.Id, user.Email, user.DisplayName,
+            profile?.Role, user.EmailConfirmed, profile?.CanCreateReports == true);
     }
 
     private async Task<ApplicationUser?> ValidateSessionAsync(ClaimsPrincipal principal)
     {
         var user = await signIn.ValidateSecurityStampAsync(principal);
         if (user is null || !await signIn.CanSignInAsync(user) ||
-            await users.IsLockedOutAsync(user) || await users.GetTwoFactorEnabledAsync(user))
+            await users.IsLockedOutAsync(user) || await users.GetTwoFactorEnabledAsync(user) ||
+            !RoleNames.IsCitizenAccount(await users.GetRolesAsync(user)))
             return null;
 
         return user;
@@ -114,13 +155,11 @@ public sealed class MobileAuthController(
     public sealed record LoginRequest(
         [Required, EmailAddress, StringLength(256)] string Email,
         [Required, StringLength(1024)] string Password);
-    
-    public sealed record RegisterRequest(
-        [Required, StringLength(120)] string DisplayName,
-        [Required, EmailAddress, StringLength(256)] string Email,
-        [Required, StringLength(1024)] string Password);
+
+    public sealed record RecoveryRequest([Required, EmailAddress, StringLength(256)] string Email);
 
     public sealed record RefreshRequest([Required, StringLength(8192)] string RefreshToken);
 
-    public sealed record MobileProfile(string Id, string? Email, string DisplayName);
+    public sealed record MobileProfile(string Id, string? Email, string DisplayName,
+        string? CitizenRole, bool EmailConfirmed, bool CanCreateReports);
 }

@@ -51,17 +51,21 @@ public sealed class AccountLifecycle(IServiceScopeFactory scopeFactory, AccountE
         await db.SaveChangesAsync(); await tx.CommitAsync();
     }
 
-    public async Task RequestPasswordResetAsync(string email)
+    public async Task RequestPasswordResetAsync(string email, AccountAudience audience)
     {
         if (string.IsNullOrWhiteSpace(email) || email.Length > 256) return;
         await using var scope = scopeFactory.CreateAsyncScope();
         var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var user = await users.FindByEmailAsync(email.Trim());
         if (user is null || !user.IsActive) return;
+        var isCitizen = RoleNames.IsCitizenAccount(await users.GetRolesAsync(user));
+        if (isCitizen != (audience == AccountAudience.Citizen)) return;
+
+        var path = isCitizen ? "cuenta/restablecer" : "Account/ResetPassword";
         var token = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(await users.GeneratePasswordResetTokenAsync(user)));
         try
         {
-            var link = sender.Link("Account/ResetPassword", ("email", user.Email!), ("token", token));
+            var link = sender.Link(path, ("email", user.Email!), ("token", token));
             await sender.SendAsync(user.Email!, "Restablecer contraseña de NLDMAP",
                 $"Abre este enlace para definir una nueva contraseña:\n{link}\n\nEl enlace vence en 2 horas. Si no lo solicitaste, ignora este mensaje.");
         }

@@ -129,19 +129,24 @@
                 <MudPaper Class="pa-4" Elevation="1">
                     <MudStack Spacing="2">
                         <MudText Typo="Typo.h6" HtmlTag="h2">Roles asignados</MudText>
-                        @if (CanAssignRoles)
+                        @if (HasCitizenRole)
+                        {
+                            <MudText Typo="Typo.body2">El rol público cambia al completar el perfil.</MudText>
+                        }
+                        else if (CanAssignRoles)
                         {
                             <MudText Typo="Typo.body2">
                                 Los cambios de roles requieren que esta cuenta vuelva a iniciar sesión.
                             </MudText>
                         }
 
-                        @foreach (var role in roles)
+                        @foreach (var role in roles.Where(role =>
+                            HasCitizenRole ? user.RoleIds.Contains(role.Id) : !RoleNames.IsCitizenRole(role.Name)))
                         {
                             <MudCheckBox T="bool" Label="@role.Name" Color="Color.Primary"
                                          Value="@selected.Contains(role.Id)"
                                          ValueChanged="@(value => Toggle(role.Id, value))"
-                                         Disabled="@(Busy || !CanAssignRoles)" @key="role.Id" />
+                                         Disabled="@(Busy || !CanAssignRoles || RoleNames.IsCitizenRole(role.Name))" @key="role.Id" />
                         }
 
                         @if (CanAssignRoles)
@@ -172,7 +177,9 @@
 
     private bool CanEditProfile => Access?.Allows(PermissionNames.UsersEdit) == true;
     private bool CanChangeStatus => Access?.Allows(PermissionNames.UsersStatus) == true;
-    private bool CanAssignRoles => Access?.Allows(PermissionNames.RolesAssign) == true;
+    private bool HasCitizenRole => user is not null && roles.Any(role =>
+        user.RoleIds.Contains(role.Id) && RoleNames.IsCitizenRole(role.Name));
+    private bool CanAssignRoles => !HasCitizenRole && Access?.Allows(PermissionNames.RolesAssign) == true;
 
     protected override async Task LoadAsync()
     {
@@ -224,7 +231,10 @@
 
         return RunAsync(async () =>
         {
-            await Admin.SetUserRolesAsync(new(detail.Id, detail.ConcurrencyStamp, selected.ToArray()));
+            var staffRoleIds = roles
+                .Where(role => selected.Contains(role.Id) && !RoleNames.IsCitizenRole(role.Name))
+                .Select(role => role.Id).ToArray();
+            await Admin.SetUserRolesAsync(new(detail.Id, detail.ConcurrencyStamp, staffRoleIds));
             await LoadAsync();
         }, "Roles actualizados. La cuenta deberá volver a iniciar sesión.");
     }

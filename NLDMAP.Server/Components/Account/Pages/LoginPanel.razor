@@ -1,4 +1,8 @@
-﻿<MudThemeProvider IsDarkMode="false" />
+﻿@using Microsoft.JSInterop
+@using NLDMAP.Server.Theming
+@inject IJSRuntime JS
+
+<MudThemeProvider Theme="@theme" IsDarkMode="@isDarkMode" />
 <MudPopoverProvider />
 
 <MudStack AlignItems="MudBlazor.AlignItems.Center" Justify="MudBlazor.Justify.Center"
@@ -9,7 +13,7 @@
                 <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings"
                          Color="MudBlazor.Color.Primary" Size="MudBlazor.Size.Large" />
                 <MudText Typo="MudBlazor.Typo.h5" HtmlTag="h1">Iniciar sesión</MudText>
-                <MudText Typo="MudBlazor.Typo.body2" Color="MudBlazor.Color.Secondary">
+                <MudText Typo="MudBlazor.Typo.body2" Style="color: var(--mud-palette-text-secondary);">
                     NLDMAP · Acceso para personal autorizado
                 </MudText>
 
@@ -27,10 +31,10 @@
 
                 <MudTextField T="string" Label="Correo electrónico"
                               InputType="MudBlazor.InputType.Email" Variant="MudBlazor.Variant.Outlined"
-                              @bind-Value="email" UserAttributes="EmailAttributes" />
+                              @bind-Value="email" MaxLength="256" UserAttributes="EmailAttributes" />
                 <MudTextField T="string" Label="Contraseña"
                               InputType="MudBlazor.InputType.Password" Variant="MudBlazor.Variant.Outlined"
-                              @bind-Value="password" UserAttributes="PasswordAttributes" />
+                              @bind-Value="password" MaxLength="1024" UserAttributes="PasswordAttributes" />
 
                 <MudButton ButtonType="MudBlazor.ButtonType.Submit" Variant="MudBlazor.Variant.Filled"
                            Color="MudBlazor.Color.Primary" FullWidth="true"
@@ -49,11 +53,15 @@
 
 @code {
     [Parameter] public string InitialEmail { get; set; } = "";
+    [Parameter] public bool InitialDarkMode { get; set; } = true;
     [Parameter] public string? ErrorMessage { get; set; }
     [Parameter] public bool ShowAccessNotice { get; set; }
 
     private string email = "";
     private string password = "";
+
+    private readonly MudTheme theme = NldmapTheme.Create();
+    private bool isDarkMode = true;
 
     // Estos nombres conectan los inputs HTML con el modelo del POST en Login.razor.
     private readonly Dictionary<string, object> EmailAttributes = new()
@@ -70,5 +78,29 @@
         ["aria-required"] = "true"
     };
 
-    protected override void OnInitialized() => email = InitialEmail;
+    protected override void OnInitialized()
+    {
+        email = InitialEmail;
+        isDarkMode = InitialDarkMode;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        try
+        {
+            var savedTheme = await JS.InvokeAsync<bool?>("nldmapTheme.get");
+            if (savedTheme is bool savedMode && savedMode != isDarkMode)
+            {
+                isDarkMode = savedMode;
+                StateHasChanged();
+            }
+        }
+        catch (JSException)
+        {
+            // Si localStorage no está disponible, se conserva el tema inicial.
+        }
+    }
 }

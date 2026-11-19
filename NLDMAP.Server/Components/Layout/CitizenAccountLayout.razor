@@ -1,0 +1,19 @@
+@inherits LayoutComponentBase
+@using NLDMAP.Server.Theming
+
+<MudThemeProvider Theme="@theme" IsDarkMode="false" />
+
+<main class="citizen-account">
+    <MudContainer MaxWidth="MaxWidth.Small" Class="py-6">
+        <MudStack Spacing="3">
+            <MudLink Href="/" Typo="Typo.subtitle1">Búsqueda Tlaxcala</MudLink>
+            <MudPaper Class="pa-6" Outlined="true" Elevation="0">
+                @Body
+            </MudPaper>
+        </MudStack>
+    </MudContainer>
+</main>
+
+@code {
+    private readonly MudTheme theme = NldmapTheme.CreatePublic();
+}

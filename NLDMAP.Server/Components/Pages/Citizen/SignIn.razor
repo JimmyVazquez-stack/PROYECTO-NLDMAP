@@ -1,0 +1,89 @@
+@page "/cuenta/entrar"
+@layout CitizenAccountLayout
+@attribute [AllowAnonymous]
+@attribute [ExcludeFromInteractiveRouting]
+@attribute [StreamRendering(false)]
+@using Microsoft.AspNetCore.Identity
+@using NLDMAP.Infrastructure.Identity
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> Users
+@inject NavigationManager Navigation
+
+<PageTitle>Iniciar sesión | Búsqueda Tlaxcala</PageTitle>
+
+<EditForm Model="Input" method="post" FormName="citizen-login" Enhance="false" OnValidSubmit="LoginAsync" OnInvalidSubmit="ClearPassword">
+    <DataAnnotationsValidator />
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h4" HtmlTag="h1">Iniciar sesión</MudText>
+
+        @if (error is not null)
+        {
+            <MudAlert Severity="Severity.Error" role="alert">@error</MudAlert>
+        }
+        else if (Registered == "1")
+        {
+            <MudAlert Severity="Severity.Success">Cuenta creada. Ya puedes iniciar sesión.</MudAlert>
+        }
+
+        <div class="citizen-field">
+            <label for="citizen-email">Correo electrónico</label>
+            <InputText id="citizen-email" type="email" autocomplete="username" @bind-Value="Input.Email" />
+            <ValidationMessage For="() => Input.Email" />
+        </div>
+        <div class="citizen-field">
+            <label for="citizen-password">Contraseña</label>
+            <InputText id="citizen-password" type="password" autocomplete="current-password" @bind-Value="Input.Password" />
+            <ValidationMessage For="() => Input.Password" />
+        </div>
+
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">
+            Iniciar sesión
+        </MudButton>
+        <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2">
+            <MudLink Href="/cuenta/registro">Crear cuenta</MudLink>
+            <MudLink Href="/cuenta/recuperar">Olvidé mi contraseña</MudLink>
+        </MudStack>
+    </MudStack>
+</EditForm>
+
+@code {
+    [SupplyParameterFromQuery(Name = "registro")]
+    private string? Registered { get; set; }
+
+    [SupplyParameterFromForm(FormName = "citizen-login")]
+    private LoginInput Input { get; set; } = default!;
+
+    private string? error;
+
+    protected override void OnInitialized() => Input ??= new();
+
+    private void ClearPassword() => Input.Password = "";
+
+    private async Task LoginAsync()
+    {
+        var user = await Users.FindByEmailAsync(Input.Email.Trim());
+        if (user is not null && RoleNames.IsCitizenAccount(await Users.GetRolesAsync(user)))
+        {
+            var result = await SignInManager.CheckPasswordSignInAsync(user, Input.Password, lockoutOnFailure: true);
+            Input.Password = "";
+            if (result.Succeeded && !await Users.GetTwoFactorEnabledAsync(user))
+            {
+                await SignInManager.SignInAsync(user, isPersistent: false);
+                Navigation.NavigateTo("/cuenta/perfil", forceLoad: true);
+                return;
+            }
+        }
+
+        Input.Password = "";
+        error = "No fue posible iniciar sesión. Revisa el correo y la contraseña.";
+    }
+
+    private sealed class LoginInput
+    {
+        [Required, EmailAddress, StringLength(256)]
+        public string Email { get; set; } = "";
+
+        [Required, StringLength(1024)]
+        public string Password { get; set; } = "";
+    }
+}

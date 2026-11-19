@@ -4,7 +4,9 @@ using NLDMAP.Domain.Catalogs;
 
 namespace NLDMAP.Application.Catalogs;
 
-public sealed class TezService(ICurrentActor currentActor, IAdministrationStore administration,
+public sealed class TezService(
+    ICurrentActor currentActor,
+    IAdministrationStore administration,
     ITezStore store)
 {
     public async Task<PageResult<TezRow>> GetPageAsync(TezQuery query)

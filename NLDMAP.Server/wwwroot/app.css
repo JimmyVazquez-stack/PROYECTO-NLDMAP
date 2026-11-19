@@ -1,5 +1,5 @@
 /* =========================================
-   NAVEGACIÓN ADMINISTRATIVA
+   NAVEGACIÃ“N ADMINISTRATIVA
    ========================================= */
 
 .admin-sidebar-nav .mud-nav-link {
@@ -38,7 +38,7 @@
 
 
 /* =========================================
-   PÁGINA ACTUAL
+   PÃGINA ACTUAL
    ========================================= */
 
 .admin-sidebar-nav .mud-nav-link.active {
@@ -58,4 +58,9 @@
 
 .admin-sidebar-nav .mud-nav-link.active:hover {
     background-color: rgba(255, 255, 255, 0.20) !important;
+}
+
+/* Blazor enfoca el tÃ­tulo al navegar. */
+h1[tabindex="-1"]:focus {
+    outline: none;
 }
