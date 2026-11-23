@@ -8,6 +8,7 @@ using NLDMAP.Application.Administration;
 using NLDMAP.Application.Accounts;
 using NLDMAP.Infrastructure.Administration;
 using NLDMAP.Infrastructure.Catalogs;
+using NLDMAP.Infrastructure.Graph;
 
 namespace NLDMAP.Infrastructure
 {
@@ -35,7 +36,10 @@ namespace NLDMAP.Infrastructure
             services.AddScoped<ICitizenAccounts, CitizenAccounts>();
             services.AddScoped<AccountEmailSender>();
             services.AddMongoCatalogs(configuration);
-
+            
+            /*AGREGAR SERVICIO NEO4J  */
+            services.AddNeo4J(configuration);
+            
             return services;
         }
     }
