@@ -2,7 +2,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace NLDMAP.Application.Administration;
 
-public sealed record ActorSession(string UserId, string SecurityStamp);
+public sealed record ActorSession(
+    string UserId, 
+    string SecurityStamp
+    );
 public interface ICurrentActor { Task<ActorSession> GetAsync(); }
 public sealed class AdministrationException(string message) : Exception(message);
 public sealed record AdminAccess(string UserId, string Name, bool IsAdministrator, string[] Permissions)

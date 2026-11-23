@@ -24,14 +24,15 @@ namespace NLDMAP.Infrastructure
 
             services.AddDbContextFactory<ApplicationDbContext>(options => { options.UseNpgsql(connectionString); });
             services.AddIdentityCore<ApplicationUser>(options => { options.User.RequireUniqueEmail = true; options.Password.RequiredLength = 12; })
-            .AddRoles<IdentityRole>()
-            .AddEntityFrameworkStores<ApplicationDbContext>()
-            .AddSignInManager<ActiveSignInManager>()
-            .AddDefaultTokenProviders();
+                .AddRoles<IdentityRole>()
+                .AddEntityFrameworkStores<ApplicationDbContext>()
+                .AddSignInManager<ActiveSignInManager>()
+                .AddDefaultTokenProviders();
             services.AddScoped<IdentitySeeder>();
             services.Configure<DataProtectionTokenProviderOptions>(options => options.TokenLifespan = TimeSpan.FromHours(2));
             services.AddScoped<IAdministrationStore, AdministrationStore>();
             services.AddScoped<IAccountLifecycle, AccountLifecycle>();
+            services.AddScoped<ICitizenAccounts, CitizenAccounts>();
             services.AddScoped<AccountEmailSender>();
             services.AddMongoCatalogs(configuration);
 

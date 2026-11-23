@@ -1,0 +1,73 @@
+@page "/cuenta/registro"
+@layout CitizenAccountLayout
+@attribute [AllowAnonymous]
+@attribute [ExcludeFromInteractiveRouting]
+@using NLDMAP.Application.Accounts
+@inject ICitizenAccounts Accounts
+@inject NavigationManager Navigation
+
+<PageTitle>Crear cuenta | Búsqueda Tlaxcala</PageTitle>
+
+<EditForm Model="Input" method="post" FormName="citizen-register" OnValidSubmit="RegisterAsync" OnInvalidSubmit="ClearPassword">
+    <DataAnnotationsValidator />
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h4" HtmlTag="h1">Crear cuenta</MudText>
+
+        @if (error is not null)
+        {
+            <MudAlert Severity="Severity.Error" role="alert">@error</MudAlert>
+        }
+
+        <div class="citizen-field">
+            <label for="registration-name">Nombre</label>
+            <InputText id="registration-name" autocomplete="name" @bind-Value="Input.DisplayName" />
+            <ValidationMessage For="() => Input.DisplayName" />
+        </div>
+        <div class="citizen-field">
+            <label for="registration-email">Correo electrónico</label>
+            <InputText id="registration-email" type="email" autocomplete="username" @bind-Value="Input.Email" />
+            <ValidationMessage For="() => Input.Email" />
+        </div>
+        <div class="citizen-field">
+            <label for="registration-password">Contraseña</label>
+            <InputText id="registration-password" type="password" autocomplete="new-password" @bind-Value="Input.Password" />
+            <ValidationMessage For="() => Input.Password" />
+            <MudText Typo="Typo.caption">Usa al menos 12 caracteres, con mayúscula, minúscula, número y símbolo.</MudText>
+        </div>
+
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">
+            Crear cuenta
+        </MudButton>
+        <MudLink Href="/cuenta/entrar">Ya tengo una cuenta</MudLink>
+    </MudStack>
+</EditForm>
+
+@code {
+    [SupplyParameterFromForm(FormName = "citizen-register")]
+    private CitizenRegistration Input { get; set; } = default!;
+
+    private string? error;
+
+    protected override void OnInitialized() => Input ??= new();
+
+    private void ClearPassword() => Input.Password = "";
+
+    private async Task RegisterAsync()
+    {
+        try
+        {
+            await Accounts.RegisterAsync(Input);
+        }
+        catch (AdministrationException exception)
+        {
+            error = exception.Message;
+            return;
+        }
+        finally
+        {
+            Input.Password = "";
+        }
+
+        Navigation.NavigateTo("/cuenta/entrar?registro=1", forceLoad: true);
+    }
+}

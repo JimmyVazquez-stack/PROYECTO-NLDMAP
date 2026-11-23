@@ -1,0 +1,169 @@
+/* =========================================
+   MENÚ LATERAL
+   ========================================= */
+
+.admin-drawer {
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+/* MudDrawer genera internamente este contenedor */
+.admin-drawer ::deep .mud-drawer-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+
+/* =========================================
+   ENCABEZADO / LOGOTIPO
+   ========================================= */
+
+.admin-drawer-header {
+    padding: 16px 20px;
+    flex: 0 0 auto;
+}
+
+.admin-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Cuadro de la N */
+.admin-brand-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+
+    flex-shrink: 0;
+    box-sizing: border-box;
+
+    border: 1px solid var(--mud-palette-drawer-text);
+    border-radius: 8px;
+
+    background-color: transparent;
+    color: var(--mud-palette-drawer-text);
+}
+
+/* Letra N */
+.admin-brand-icon ::deep .admin-brand-letter {
+    margin: 0;
+
+    color: inherit;
+
+    font-weight: 800;
+    line-height: 1;
+}
+
+/* Texto LDMAP */
+.admin-brand ::deep .admin-brand-name {
+    margin: 0;
+
+    color: var(--mud-palette-drawer-text);
+
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+
+/* =========================================
+   NAVEGACIÓN LATERAL
+   ========================================= */
+
+.admin-sidebar-nav {
+    width: 100%;
+
+    margin: 0;
+    padding: 0;
+
+    flex: 0 0 auto;
+}
+
+
+/* Contenedor de MudNavMenu */
+.admin-sidebar-nav ::deep .mud-navmenu {
+    padding: 12px;
+}
+
+
+
+/* =========================================
+   ACCESIBILIDAD
+   ========================================= */
+
+.admin-sidebar-nav ::deep .mud-nav-link:focus-visible {
+    outline: 2px solid var(--mud-palette-drawer-text);
+    outline-offset: 2px;
+}
+
+
+/* =========================================
+   CONTENIDO PRINCIPAL
+   ========================================= */
+
+.admin-main-content {
+    display: flex;
+    flex-direction: column;
+
+    min-height: 100dvh;
+    box-sizing: border-box;
+
+    background-color: var(--mud-palette-background);
+    color: var(--mud-palette-text-primary);
+}
+
+
+/* Mantener footer al final */
+.admin-content-container {
+    flex: 1 0 auto;
+
+    width: 100%;
+}
+
+
+/* =========================================
+   PIE DE PÁGINA
+   ========================================= */
+
+.admin-footer {
+    padding: 16px 24px;
+
+    color: var(--mud-palette-text-secondary);
+}
+
+
+/* =========================================
+   RESPONSIVIDAD
+   ========================================= */
+
+@media (max-width: 600px) {
+
+    .admin-drawer-header {
+        padding: 14px 16px;
+    }
+
+    .admin-footer {
+        padding: 16px;
+        text-align: center;
+    }
+}
+
+/* =========================================
+   CERRAR SESIÓN
+   ========================================= */
+
+.admin-logout-form {
+    margin: 0;
+}
+
+/* Ocultar texto en pantallas pequeñas */
+@media (max-width: 600px) {
+    .admin-logout-text {
+        display: none;
+    }
+}

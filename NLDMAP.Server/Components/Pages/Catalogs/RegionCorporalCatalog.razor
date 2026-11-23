@@ -1,6 +1,5 @@
 @page "/admin/catalogos/regiones-corporales"
 @namespace NLDMAP.Server.Components.Pages.Catalogs
-@rendermode InteractiveServer
 @layout AdministrationLayout
 @attribute [Authorize(Policy = PermissionNames.CatalogsRead)]
 @inherits AdminPageBase
@@ -10,11 +9,22 @@
 <PageTitle>Regiones corporales | NLDMAP</PageTitle>
 
 <MudStack Spacing="3">
+    <div>
+        @if (editing is not null && CanManage)
+        {
+            <BackButton Label="Listado" OnClick="CancelEdit" Disabled="Busy" />
+        }
+        else
+        {
+            <BackButton Label="Catálogos" Href="/admin/catalogos" />
+        }
+    </div>
+
     <MudStack Row="true" AlignItems="AlignItems.Center"
               Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
         <MudText Typo="Typo.h4" HtmlTag="h1">Regiones corporales</MudText>
 
-        @if (CanManage)
+        @if (CanManage && editing is null)
         {
             <MudButton Variant="Variant.Outlined" 
                        OnClick="NewOption" Disabled="Busy">
@@ -77,50 +87,52 @@
             </EditForm>
         </MudPaper>
     }
+    else
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+            <MudTextField T="string" Label="Buscar por nombre"
+                          Variant="Variant.Outlined" @bind-Value="search"
+                          Disabled="Busy" />
 
-    <MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
-        <MudTextField T="string" Label="Buscar por nombre"
-                      Variant="Variant.Outlined" @bind-Value="search"
-                      Disabled="Busy" />
+            <MudButton OnClick="SearchAsync" Variant="Variant.Outlined" Disabled="Busy">
+                Buscar
+            </MudButton>
+        </MudStack>
 
-        <MudButton OnClick="SearchAsync" Variant="Variant.Outlined" Disabled="Busy">
-            Buscar
-        </MudButton>
-    </MudStack>
+        <MudTable T="RegionCorporalRow" Items="result.Items"
+                  Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
+            <HeaderContent>
+                <MudTh>Región</MudTh>
+                <MudTh>Orden</MudTh>
+                @if (CanManage)
+                {
+                    <MudTh>Acciones</MudTh>
+                }
+            </HeaderContent>
 
-    <MudTable T="RegionCorporalRow" Items="result.Items"
-              Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
-        <HeaderContent>
-            <MudTh>Región</MudTh>
-            <MudTh>Orden</MudTh>
-            @if (CanManage)
-            {
-                <MudTh>Acciones</MudTh>
-            }
-        </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Región">@context.Region</MudTd>
+                <MudTd DataLabel="Orden">@context.Orden</MudTd>
+                @if (CanManage)
+                {
+                    <MudTd DataLabel="Acciones">
+                        <MudButton OnClick="() => Edit(context)" Color="Color.Primary"
+                                   Size="Size.Small" Disabled="Busy">
+                            Editar
+                        </MudButton>
+                    </MudTd>
+                }
+            </RowTemplate>
 
-        <RowTemplate>
-            <MudTd DataLabel="Región">@context.Region</MudTd>
-            <MudTd DataLabel="Orden">@context.Orden</MudTd>
-            @if (CanManage)
-            {
-                <MudTd DataLabel="Acciones">
-                    <MudButton OnClick="() => Edit(context)" Color="Color.Primary"
-                               Size="Size.Small" Disabled="Busy">
-                        Editar
-                    </MudButton>
-                </MudTd>
-            }
-        </RowTemplate>
+            <NoRecordsContent>
+                <MudText Class="pa-4">
+                    @(Busy ? "Cargando regiones…" : "No hay regiones para mostrar.")
+                </MudText>
+            </NoRecordsContent>
+        </MudTable>
 
-        <NoRecordsContent>
-            <MudText Class="pa-4">
-                @(Busy ? "Cargando regiones…" : "No hay regiones para mostrar.")
-            </MudText>
-        </NoRecordsContent>
-    </MudTable>
-
-    <MudPagination Count="result.TotalPages" Selected="result.Page"
-                   SelectedChanged="ChangePageAsync" Disabled="Busy"
-                   Color="Color.Primary" />
+        <MudPagination Count="result.TotalPages" Selected="result.Page"
+                       SelectedChanged="ChangePageAsync" Disabled="Busy"
+                       Color="Color.Primary" />
+    }
 </MudStack>

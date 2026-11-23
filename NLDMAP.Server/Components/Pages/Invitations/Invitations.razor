@@ -1,46 +1,215 @@
 ﻿@page "/admin/invitaciones"
-@rendermode InteractiveServer
 @layout AdministrationLayout
 @attribute [Authorize(Policy = PermissionNames.InvitationsManage)]
 @inherits AdminPageBase
+
 <PageTitle>Invitaciones | NLDMAP</PageTitle>
-<h1 class="h2">Invitaciones</h1>
-<p class="text-body-secondary">El personal define su contraseña mediante un enlace de uso único.</p>
-<OperationStatus Error="@Error" Notice="@Notice" Busy="Busy" />
-@if (Access?.Allows(PermissionNames.RolesAssign) == true)
-{
-    <EditForm Model="input" OnValidSubmit="InviteAsync" FormName="invitation" class="card card-body mb-4 shadow-sm" @key="input">
-        <DataAnnotationsValidator /><h2 class="h5 mb-3">Invitar personal</h2><fieldset disabled="@Busy"><div class="row g-3">
-            <div class="col-md-5"><label for="invite-name" class="form-label">Nombre</label><InputText id="invite-name" class="form-control" @bind-Value="input.DisplayName" maxlength="120" /><ValidationMessage For="() => input.DisplayName" /></div>
-            <div class="col-md-5"><label for="invite-email" class="form-label">Correo</label><InputText id="invite-email" type="email" class="form-control" @bind-Value="input.Email" maxlength="256" /><ValidationMessage For="() => input.Email" /></div>
-            <div class="col-md-2"><label for="invite-days" class="form-label">Vigencia (días)</label><InputNumber id="invite-days" class="form-control" @bind-Value="input.ValidDays" min="1" max="7" /><ValidationMessage For="() => input.ValidDays" /></div>
-        </div><p class="fw-semibold mt-3 mb-2">Roles iniciales</p><div class="d-flex flex-wrap gap-3 mb-3">
-        @foreach (var role in roles) { <div class="form-check"><input class="form-check-input" type="checkbox" id="@($"invite-role-{role.Id}")" checked="@selected.Contains(role.Id)" @onchange="e => Toggle(role.Id, e.Value is true)" /><label class="form-check-label" for="@($"invite-role-{role.Id}")">@role.Name</label></div> }
-        </div><button class="btn btn-primary" type="submit">Enviar invitación</button></fieldset>
-    </EditForm>
-}
-<div class="card shadow-sm"><div class="card-header bg-body">Últimas 100 invitaciones</div><div class="table-responsive"><table class="table align-middle mb-0"><thead class="table-light"><tr><th>Destinatario</th><th>Vence (UTC)</th><th>Estado</th><th>Entrega</th><th>Acciones</th></tr></thead><tbody>
-@foreach (var i in invitations)
-{
-    <tr><td><strong>@i.DisplayName</strong><div class="small text-body-secondary">@i.Email</div></td><td class="small text-nowrap">@i.ExpiresAtUtc.ToString("yyyy-MM-dd HH:mm")</td><td>@i.Status</td><td>@i.DeliveryStatus</td><td>
-    @if (i.Status is "Pendiente" or "Vencida") { <div class="d-flex gap-2">@if (Access?.Allows(PermissionNames.RolesAssign) == true) { <button class="btn btn-outline-primary btn-sm" disabled="@Busy" @onclick="() => ResendAsync(i.Id)">Reenviar</button> }<button class="btn btn-outline-danger btn-sm" disabled="@Busy" @onclick="() => revoking = i">Revocar</button></div> }
-    </td></tr>
-}
-@if (invitations.Count == 0) { <tr><td colspan="5" class="text-center text-body-secondary py-5">Todavía no hay invitaciones.</td></tr> }
-</tbody></table></div></div>
-@if (revoking is not null)
-{
-    <div class="alert alert-warning mt-3"><p>¿Revocar la invitación de @revoking.Email?</p><button class="btn btn-danger btn-sm me-2" disabled="@Busy" @onclick="RevokeAsync">Confirmar</button><button class="btn btn-outline-secondary btn-sm" disabled="@Busy" @onclick="() => revoking = null">Cancelar</button></div>
-}
+
+<MudStack Spacing="3">
+    <div>
+        <MudText Typo="Typo.h4" HtmlTag="h1">Invitaciones</MudText>
+        <MudText Typo="Typo.body2">
+            El personal define su contraseña mediante un enlace de uso único.
+        </MudText>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Error))
+    {
+        <MudAlert Severity="Severity.Error" role="alert">@Error</MudAlert>
+    }
+
+    @if (!string.IsNullOrEmpty(Notice))
+    {
+        <MudAlert Severity="Severity.Success" role="status">@Notice</MudAlert>
+    }
+
+    @if (Busy)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true"
+                           aria-label="Procesando invitaciones" />
+    }
+
+    @if (CanAssignRoles)
+    {
+        <MudPaper Class="pa-4" Elevation="1">
+            <EditForm Model="input" OnValidSubmit="InviteAsync" FormName="invitation" @key="input">
+                <DataAnnotationsValidator />
+
+                <MudStack Spacing="3">
+                    <MudText Typo="Typo.h6" HtmlTag="h2">Invitar personal</MudText>
+
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" md="5">
+                            <MudTextField T="string" Label="Nombre" Variant="Variant.Outlined"
+                                          @bind-Value="input.DisplayName" For="() => input.DisplayName"
+                                          MaxLength="120" Immediate="true" Disabled="Busy" />
+                        </MudItem>
+                        <MudItem xs="12" md="5">
+                            <MudTextField T="string" Label="Correo" Variant="Variant.Outlined"
+                                          InputType="MudBlazor.InputType.Email"
+                                          @bind-Value="input.Email" For="() => input.Email"
+                                          MaxLength="256" Immediate="true" Disabled="Busy" />
+                        </MudItem>
+                        <MudItem xs="12" md="2">
+                            <MudNumericField T="int" Label="Vigencia (días)" Variant="Variant.Outlined"
+                                             @bind-Value="input.ValidDays" For="() => input.ValidDays"
+                                             Min="1" Max="7" Disabled="Busy" />
+                        </MudItem>
+                    </MudGrid>
+
+                    <div>
+                        <MudText Typo="Typo.subtitle1" HtmlTag="h3">Roles iniciales</MudText>
+                        <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                            @foreach (var role in roles.Where(role => !RoleNames.IsCitizenRole(role.Name)))
+                            {
+                                <MudCheckBox T="bool" Label="@role.Name" Color="Color.Primary"
+                                             Value="@selected.Contains(role.Id)"
+                                             ValueChanged="@(value => Toggle(role.Id, value))"
+                                             Disabled="Busy" @key="role.Id" />
+                            }
+                        </MudStack>
+                    </div>
+
+                    <div>
+                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled"
+                                   Color="Color.Primary" Disabled="Busy">
+                            Enviar invitación
+                        </MudButton>
+                    </div>
+                </MudStack>
+            </EditForm>
+        </MudPaper>
+    }
+
+    @if (revoking is not null)
+    {
+        <MudAlert Severity="Severity.Warning">
+            <MudStack Spacing="2">
+                <MudText>¿Revocar la invitación de @revoking.Email?</MudText>
+                <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                    <MudButton Variant="Variant.Filled" Color="Color.Error"
+                               Disabled="Busy" OnClick="RevokeAsync">
+                        Confirmar revocación
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined" Disabled="Busy"
+                               OnClick="() => revoking = null">
+                        Cancelar
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+        </MudAlert>
+    }
+
+    <MudTable T="InvitationRow" Items="invitations" Hover="true"
+              Breakpoint="Breakpoint.Sm" Elevation="1" Context="invitation">
+        <ToolBarContent>
+            <MudText Typo="Typo.h6" HtmlTag="h2">Últimas 100 invitaciones</MudText>
+        </ToolBarContent>
+
+        <HeaderContent>
+            <MudTh>Destinatario</MudTh>
+            <MudTh>Vence (UTC)</MudTh>
+            <MudTh>Estado</MudTh>
+            <MudTh>Entrega</MudTh>
+            <MudTh>Acciones</MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="Destinatario">
+                <MudText Typo="Typo.subtitle2">@invitation.DisplayName</MudText>
+                <MudText Typo="Typo.caption">@invitation.Email</MudText>
+            </MudTd>
+            <MudTd DataLabel="Vence (UTC)">@invitation.ExpiresAtUtc.ToString("yyyy-MM-dd HH:mm")</MudTd>
+            <MudTd DataLabel="Estado">@invitation.Status</MudTd>
+            <MudTd DataLabel="Entrega">@invitation.DeliveryStatus</MudTd>
+            <MudTd DataLabel="Acciones">
+                @if (invitation.Status is "Pendiente" or "Vencida")
+                {
+                    <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                        @if (CanAssignRoles)
+                        {
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                                       Disabled="Busy" OnClick="() => ResendAsync(invitation.Id)">
+                                Reenviar
+                            </MudButton>
+                        }
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small"
+                                   Disabled="Busy" OnClick="() => revoking = invitation">
+                            Revocar
+                        </MudButton>
+                    </MudStack>
+                }
+            </MudTd>
+        </RowTemplate>
+
+        <NoRecordsContent>
+            <MudText Class="pa-4">@(Busy ? "Cargando invitaciones…" : "Todavía no hay invitaciones.")</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudStack>
+
 @code {
     private InvitationInput input = new();
     private IReadOnlyList<RoleRow> roles = [];
     private IReadOnlyList<InvitationRow> invitations = [];
-    private HashSet<string> selected = [];
+    private readonly HashSet<string> selected = [];
     private InvitationRow? revoking;
-    protected override async Task LoadAsync() { roles = await Admin.GetRolesAsync(); invitations = await Admin.GetInvitationsAsync(); }
-    private void Toggle(string id, bool value) { if (value) selected.Add(id); else selected.Remove(id); }
-    private Task InviteAsync() => RunAsync(async () => { input.RoleIds = selected.ToArray(); var message = await Admin.InviteAsync(input); input = new(); selected = []; await LoadAsync(); SetNotice(message); });
-    private Task ResendAsync(Guid id) => RunAsync(async () => { var message = await Admin.ResendInvitationAsync(id); await LoadAsync(); SetNotice(message); });
-    private Task RevokeAsync() => RunAsync(async () => { await Admin.RevokeInvitationAsync(revoking!.Id); revoking = null; await LoadAsync(); }, "Invitación revocada.");
+
+    private bool CanAssignRoles => Access?.Allows(PermissionNames.RolesAssign) == true;
+
+    protected override async Task LoadAsync()
+    {
+        roles = await Admin.GetRolesAsync();
+        invitations = await Admin.GetInvitationsAsync();
+    }
+
+    private void Toggle(string id, bool value)
+    {
+        if (value)
+            selected.Add(id);
+        else
+            selected.Remove(id);
+    }
+
+    private Task InviteAsync()
+    {
+        if (!CanAssignRoles)
+            return Task.CompletedTask;
+
+        return RunAsync(async () =>
+        {
+            input.RoleIds = selected.ToArray();
+            var message = await Admin.InviteAsync(input);
+            input = new();
+            selected.Clear();
+            await LoadAsync();
+            SetNotice(message);
+        });
+    }
+
+    private Task ResendAsync(Guid id)
+    {
+        if (!CanAssignRoles)
+            return Task.CompletedTask;
+
+        return RunAsync(async () =>
+        {
+            var message = await Admin.ResendInvitationAsync(id);
+            await LoadAsync();
+            SetNotice(message);
+        });
+    }
+
+    private Task RevokeAsync()
+    {
+        if (revoking is not { } invitation)
+            return Task.CompletedTask;
+
+        return RunAsync(async () =>
+        {
+            await Admin.RevokeInvitationAsync(invitation.Id);
+            revoking = null;
+            await LoadAsync();
+        }, "Invitación revocada.");
+    }
 }

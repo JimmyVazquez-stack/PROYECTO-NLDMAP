@@ -4,6 +4,7 @@ public static class PermissionNames
 {
     public const string ClaimType = "permission";
     public const string Access = "Administration.Access";
+    public const string ReportsCreate = "Reports.Create"; // Permiso público, fuera del catálogo administrativo.
     public const string UsersRead = "Users.Read";
     public const string UsersEdit = "Users.Edit";
     public const string UsersStatus = "Users.Status";

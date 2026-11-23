@@ -16,8 +16,14 @@ public sealed partial class AdministrationStore
         var claims = await o.Db.RoleClaims.Where(c => c.ClaimType == PermissionNames.ClaimType).ToListAsync();
         var counts = await o.Db.UserRoles.GroupBy(r => r.RoleId).Select(g => new { Id = g.Key, Count = g.Count() }).ToDictionaryAsync(x => x.Id, x => x.Count);
         return roles.Select(r => new RoleRow(r.Id, r.Name!, r.ConcurrencyStamp!, counts.GetValueOrDefault(r.Id),
-            RoleNames.SystemRoles.Contains(r.Name), r.Name == RoleNames.Administrator ? PermissionNames.Catalog.Keys.ToArray() :
-                claims.Where(c => c.RoleId == r.Id).Select(c => c.ClaimValue!).Distinct().Order().ToArray())).ToArray();
+            RoleNames.SystemRoles.Contains(r.Name) || RoleNames.IsCitizenRole(r.Name),
+            r.Name switch
+            {
+                RoleNames.Administrator => PermissionNames.Catalog.Keys.ToArray(),
+                RoleNames.Reporter => [PermissionNames.ReportsCreate],
+                _ when RoleNames.IsCitizenRole(r.Name) => [],
+                _ => claims.Where(c => c.RoleId == r.Id).Select(c => c.ClaimValue!).Distinct().Order().ToArray()
+            })).ToArray();
     });
 
     public Task SaveRoleAsync(ActorSession actor, RoleInput input) => RunAsync(actor, PermissionNames.RolesManage, true, async o =>
@@ -27,6 +33,8 @@ public sealed partial class AdministrationStore
         var role = input.Id is null ? new IdentityRole(input.Name) :
             await o.Roles.FindByIdAsync(input.Id) ?? throw new AdministrationException("El rol ya no existe.");
         var beforeName = role.Name;
+        if (RoleNames.IsCitizenRole(beforeName) || RoleNames.IsCitizenRole(input.Name))
+            throw new AdministrationException("Los roles públicos se administran desde el flujo de perfil.");
         if (input.Id is not null)
         {
             CheckStamp(role.ConcurrencyStamp, input.ConcurrencyStamp);
@@ -54,7 +62,7 @@ public sealed partial class AdministrationStore
     {
         var role = await o.Roles.FindByIdAsync(id) ?? throw new AdministrationException("El rol ya no existe.");
         CheckStamp(role.ConcurrencyStamp, stamp);
-        if (RoleNames.SystemRoles.Contains(role.Name)) throw new AdministrationException("No se pueden eliminar roles del sistema.");
+        if (RoleNames.SystemRoles.Contains(role.Name) || RoleNames.IsCitizenRole(role.Name)) throw new AdministrationException("No se pueden eliminar roles del sistema.");
         if (await o.Db.UserRoles.AnyAsync(r => r.RoleId == id)) throw new AdministrationException("Retira las asignaciones antes de eliminar este rol.");
         var claims = (await o.Roles.GetClaimsAsync(role)).Where(c => c.Type == PermissionNames.ClaimType).Select(c => c.Value).ToArray();
         if (!o.Access.IsAdministrator && claims.Any(p => !o.Access.Allows(p)))

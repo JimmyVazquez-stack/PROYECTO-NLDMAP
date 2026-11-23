@@ -1,0 +1,153 @@
+@page "/cuenta/perfil"
+@layout CitizenAccountLayout
+@attribute [Authorize]
+@attribute [ExcludeFromInteractiveRouting]
+@using NLDMAP.Application.Accounts
+@inject ICitizenAccounts Accounts
+@inject ICurrentActor CurrentActor
+@inject IConfiguration Configuration
+
+<PageTitle>Mi perfil | Búsqueda Tlaxcala</PageTitle>
+
+<MudStack Spacing="3">
+    <MudText Typo="Typo.h4" HtmlTag="h1">Mi perfil</MudText>
+
+    @if (error is not null)
+    {
+        <MudAlert Severity="Severity.Error" role="alert">@error</MudAlert>
+    }
+
+    @if (profile is null)
+    {
+        <MudLink Href="/cuenta/entrar">Entrar con una cuenta pública</MudLink>
+    }
+    else
+    {
+        <MudText Typo="Typo.body1">@profile.Email</MudText>
+        <MudText Typo="Typo.body2">Tipo de cuenta: @profile.Role</MudText>
+
+        @if (profile.CanCreateReports)
+        {
+            <MudAlert Severity="Severity.Success">Tu perfil está completo.</MudAlert>
+            @if (Configuration.GetValue<bool>("Reports:ShowPrototype"))
+            {
+                <MudButton Href="/reportes/crear" Variant="Variant.Filled" Color="Color.Primary">
+                    Ver prototipo de reportes
+                </MudButton>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2">El formulario de reportes aún no está disponible.</MudText>
+            }
+        }
+        else
+        {
+            <MudText Typo="Typo.body2">
+                Completa tu nombre y teléfono y confirma tu correo para habilitar la creación de reportes.
+            </MudText>
+
+            @if (!profile.EmailConfirmed)
+            {
+                <EditForm Model="Input" method="post" FormName="citizen-email-code" OnSubmit="SendCodeAsync">
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Outlined" Color="Color.Primary">
+                        Enviar código por correo
+                    </MudButton>
+                </EditForm>
+                @if (codeSent)
+                {
+                    <MudAlert Severity="Severity.Info">Copia el código completo del correo y pégalo abajo.</MudAlert>
+                }
+            }
+
+            <EditForm Model="Input" method="post" FormName="citizen-profile"
+                      OnValidSubmit="CompleteAsync" OnInvalidSubmit="ClearCode">
+                <DataAnnotationsValidator />
+                <MudStack Spacing="3">
+                    <div class="citizen-field">
+                        <label for="profile-name">Nombre completo</label>
+                        <InputText id="profile-name" autocomplete="name" @bind-Value="Input.FullName" />
+                        <ValidationMessage For="() => Input.FullName" />
+                    </div>
+                    <div class="citizen-field">
+                        <label for="profile-phone">Teléfono</label>
+                        <InputText id="profile-phone" type="tel" autocomplete="tel"
+                                   @bind-Value="Input.PhoneNumber" />
+                        <ValidationMessage For="() => Input.PhoneNumber" />
+                    </div>
+                    @if (!profile.EmailConfirmed)
+                    {
+                        <div class="citizen-field">
+                            <label for="profile-code">Código de confirmación</label>
+                            <InputText id="profile-code" type="password" autocomplete="off"
+                                       @bind-Value="Input.EmailCode" />
+                            <ValidationMessage For="() => Input.EmailCode" />
+                        </div>
+                    }
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">
+                        Completar perfil
+                    </MudButton>
+                </MudStack>
+            </EditForm>
+        }
+    }
+    <form action="/cuenta/salir" method="post">
+        <AntiforgeryToken />
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Text">
+            Cerrar sesión
+        </MudButton>
+    </form>
+</MudStack>
+
+@code {
+    [SupplyParameterFromForm(FormName = "citizen-profile")]
+    private CitizenProfileInput Input { get; set; } = default!;
+
+    private CitizenProfile? profile;
+    private string? error;
+    private bool codeSent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            profile = await Accounts.GetProfileAsync(await CurrentActor.GetAsync());
+        }
+        catch (AdministrationException exception)
+        {
+            error = exception.Message;
+        }
+
+        Input ??= new() { FullName = profile?.DisplayName ?? "" };
+    }
+
+    private async Task SendCodeAsync()
+    {
+        try
+        {
+            await Accounts.SendEmailConfirmationAsync(await CurrentActor.GetAsync());
+            codeSent = true;
+        }
+        catch (AdministrationException exception)
+        {
+            error = exception.Message;
+        }
+    }
+
+    private async Task CompleteAsync()
+    {
+        try
+        {
+            profile = await Accounts.CompleteProfileAsync(await CurrentActor.GetAsync(), Input);
+        }
+        catch (AdministrationException exception)
+        {
+            error = exception.Message;
+        }
+        finally
+        {
+            ClearCode();
+        }
+    }
+
+    private void ClearCode() => Input.EmailCode = null;
+}

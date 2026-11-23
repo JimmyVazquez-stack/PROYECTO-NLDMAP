@@ -1,0 +1,16 @@
+<MudButton Href="@Href"
+           OnClick="@OnClick"
+           Disabled="Disabled"
+           ButtonType="ButtonType.Button"
+           Color="Color.Primary"
+           Variant="Variant.Text"
+           StartIcon="@Icons.Material.Filled.ArrowBack">
+    @Label
+</MudButton>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public string? Href { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+}

@@ -24,7 +24,7 @@ public sealed class RegionCorporalInput
     public string Version { get; set; } = "";
 
     [Required(ErrorMessage = "Escribe el nombre de la region coporal.")]
-    public string Region { get; set; }
+    public string Region { get; set; } = "";
 
     [Required(ErrorMessage = "El orden debe estar entre 0 y 9999")]
     public int Orden { get; set; }

@@ -1,0 +1,25 @@
+.citizen-account ::deep .citizen-field {
+    display: grid;
+    gap: .35rem;
+}
+
+.citizen-account ::deep .citizen-field input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: .65rem .75rem;
+    border: 1px solid var(--mud-palette-text-secondary);
+    border-radius: .5rem;
+    font: inherit;
+    color: inherit;
+    background: transparent;
+}
+
+.citizen-account ::deep .citizen-field .validation-message {
+    color: var(--mud-palette-error);
+}
+.citizen-account {
+    min-height: 100dvh;
+    color: var(--mud-palette-text-primary);
+    background: var(--mud-palette-background);
+    font-family: var(--mud-typography-default-family);
+}

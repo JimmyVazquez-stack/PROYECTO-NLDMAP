@@ -2,12 +2,25 @@
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData"
                             DefaultLayout="typeof(Layout.MainLayout)">
-            <NotAuthorized>
-                <p>No tienes acceso a esta página.</p>
-
-                <a href="Account/Login" data-enhance-nav="false">
-                    Ir al inicio de sesión
-                </a>
+            <NotAuthorized Context="authentication">
+                @if (routeData.PageType == typeof(Pages.Reports.CreateReport))
+                {
+                    @if (authentication.User.Identity?.IsAuthenticated == true)
+                    {
+                        <p>Completa tu perfil público para crear reportes.</p>
+                        <a href="/cuenta/perfil" data-enhance-nav="false">Ir a mi perfil</a>
+                    }
+                    else
+                    {
+                        <p>Inicia sesión con tu cuenta pública para crear reportes.</p>
+                        <a href="/cuenta/entrar" data-enhance-nav="false">Iniciar sesión</a>
+                    }
+                }
+                else
+                {
+                    <p>No tienes acceso a esta página.</p>
+                    <a href="/Account/Login" data-enhance-nav="false">Ir al inicio de sesión administrativo</a>
+                }
             </NotAuthorized>
         </AuthorizeRouteView>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />

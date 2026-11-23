@@ -13,7 +13,7 @@ public sealed class IdentityRevalidatingAuthenticationStateProvider(
     : RevalidatingServerAuthenticationStateProvider(loggerFactory)
 {
     protected override TimeSpan RevalidationInterval =>
-        TimeSpan.FromMinutes(1);
+        TimeSpan.FromMinutes(30);
 
     protected override async Task<bool> ValidateAuthenticationStateAsync(
         AuthenticationState authenticationState,

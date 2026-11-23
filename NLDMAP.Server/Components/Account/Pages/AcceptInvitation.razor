@@ -3,53 +3,162 @@
 @attribute [AllowAnonymous]
 @attribute [ExcludeFromInteractiveRouting]
 @attribute [StreamRendering(false)]
+
+@using Microsoft.AspNetCore.Http
 @using NLDMAP.Application.Accounts
+@using NLDMAP.Server.Theming
 @inject IAccountLifecycle Accounts
 @inject ILogger<AcceptInvitation> Logger
+
 <PageTitle>Aceptar invitación | NLDMAP</PageTitle>
-<h1 class="h3 mb-3">Aceptar invitación</h1>
-@if (done)
-{
-    <div class="alert alert-success" role="status">Cuenta creada. Ya puedes iniciar sesión.</div>
-}
-else
-{
-    @if (error is not null)
-    {
-        <div class="alert alert-danger" role="alert">@error</div>
-    }
-    <p class="small text-body-secondary">Usa al menos 12 caracteres, mayúsculas, minúsculas, números y un símbolo.</p>
-    <EditForm Model="Input" method="post" OnValidSubmit="SubmitAsync" FormName="accept-invitation">
-        <DataAnnotationsValidator />
-        <input type="hidden" name="Input.Token" value="@Input.Token" />
+<HeadContent>
+    <meta name="referrer" content="no-referrer" />
+</HeadContent>
 
-        <div class="mb-3"><label class="form-label" for="new-password">Contraseña</label><InputText class="form-control" id="new-password" type="password" autocomplete="new-password" @bind-Value="Input.Password" /><ValidationMessage For="() => Input.Password" /></div>
-        <div class="mb-3"><label class="form-label" for="confirm-password">Confirmar contraseña</label><InputText class="form-control" id="confirm-password" type="password" autocomplete="new-password" @bind-Value="Input.ConfirmPassword" /><ValidationMessage For="() => Input.ConfirmPassword" /></div>
-        <button class="btn btn-primary w-100" type="submit">Guardar contraseña</button>
-    </EditForm>
-}
-<a href="Account/Login" class="d-inline-block mt-3" data-enhance-nav="false">Ir al inicio de sesión</a>
+<MudThemeProvider Theme="@theme" IsDarkMode="@IsDarkMode" />
+
+<MudStack AlignItems="AlignItems.Center" Justify="Justify.Center"
+          Class="pa-4" Style="min-height: 100dvh; background: var(--mud-palette-background);">
+    <MudContainer MaxWidth="MaxWidth.ExtraSmall">
+        <MudPaper Elevation="3" Class="pa-6">
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.h5" HtmlTag="h1">Aceptar invitación</MudText>
+
+                @if (done)
+                {
+                    <MudAlert Severity="Severity.Success" role="status">
+                        Cuenta creada. Ya puedes iniciar sesión.
+                    </MudAlert>
+                }
+                else if (!HasRecoveryLink)
+                {
+                    <MudAlert Severity="Severity.Warning" role="alert">
+                        El enlace de invitación está incompleto. Pide a quien te invitó que lo reenvíe.
+                    </MudAlert>
+                }
+                else
+                {
+                    @if (error is not null)
+                    {
+                        <MudAlert Severity="Severity.Error" role="alert">@error</MudAlert>
+                    }
+
+                    <MudText Typo="Typo.body2" Style="color: var(--mud-palette-text-secondary);">
+                        Usa al menos 12 caracteres, mayúsculas, minúsculas, números y un símbolo.
+                    </MudText>
+                    <EditForm Model="Input" method="post" FormName="accept-invitation" Enhance="false"
+                              OnValidSubmit="SubmitAsync" OnInvalidSubmit="ClearPasswords">
+                        <DataAnnotationsValidator />
+                        <input type="hidden" name="Input.Token" value="@Input.Token" />
+
+                        <MudStack Spacing="2">
+                            <div>
+                                <MudTextField T="string" Label="Contraseña" Variant="Variant.Outlined"
+                                              InputType="MudBlazor.InputType.Password" MaxLength="256"
+                                              @bind-Value="Input.Password" UserAttributes="PasswordAttributes" />
+                                <div role="status" style="color: var(--mud-palette-error);">
+                                    <ValidationMessage For="() => Input.Password" />
+                                </div>
+                            </div>
+                            <div>
+                                <MudTextField T="string" Label="Confirmar contraseña" Variant="Variant.Outlined"
+                                              InputType="MudBlazor.InputType.Password" MaxLength="256"
+                                              @bind-Value="Input.ConfirmPassword" UserAttributes="ConfirmPasswordAttributes" />
+                                <div role="status" style="color: var(--mud-palette-error);">
+                                    <ValidationMessage For="() => Input.ConfirmPassword" />
+                                </div>
+                            </div>
+                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled"
+                                       Color="Color.Primary" FullWidth="true">
+                                Guardar contraseña
+                            </MudButton>
+                        </MudStack>
+                    </EditForm>
+                }
+
+                <MudLink Href="/Account/Login" data-enhance-nav="false">
+                    Ir al inicio de sesión
+                </MudLink>
+            </MudStack>
+        </MudPaper>
+    </MudContainer>
+</MudStack>
+
 @code {
-    [SupplyParameterFromQuery(Name = "token")] public string? QueryToken { get; set; }
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
 
-    [SupplyParameterFromForm(FormName = "accept-invitation")] private PasswordInput Input { get; set; } = default!;
+    [SupplyParameterFromQuery(Name = "token")]
+    public string? QueryToken { get; set; }
+
+    [SupplyParameterFromForm(FormName = "accept-invitation")]
+    private PasswordInput Input { get; set; } = default!;
+
     private string? error;
     private bool done;
-    protected override void OnParametersSet() { Input ??= new(); Input.Token ??= QueryToken; }
+    private readonly MudTheme theme = NldmapTheme.Create();
+    private bool IsDarkMode => HttpContext?.Request.Cookies["nldmap-theme"] != "light";
+    private bool HasRecoveryLink => !string.IsNullOrWhiteSpace(Input.Token);
+
+    private static readonly Dictionary<string, object> PasswordAttributes = new()
+    {
+        ["name"] = "Input.Password",
+        ["autocomplete"] = "new-password",
+        ["aria-required"] = "true"
+    };
+
+    private static readonly Dictionary<string, object> ConfirmPasswordAttributes = new()
+    {
+        ["name"] = "Input.ConfirmPassword",
+        ["autocomplete"] = "new-password",
+        ["aria-required"] = "true"
+    };
+
+    protected override void OnParametersSet()
+    {
+        Input ??= new();
+        Input.Token ??= QueryToken;
+    }
+
     private async Task SubmitAsync()
     {
-        try { await Accounts.AcceptInvitationAsync(Input.Token ?? "", Input.Password); done = true; }
-        catch (AdministrationException ex) { error = ex.Message; }
-        catch (Exception) { Logger.LogError("Error procesando un enlace de cuenta."); error = "No se pudo completar la operación. Solicita un enlace nuevo o inténtalo más tarde."; }
-        finally { Input.Password = ""; Input.ConfirmPassword = ""; }
+        try
+        {
+            await Accounts.AcceptInvitationAsync(Input.Token ?? "", Input.Password);
+            done = true;
+        }
+        catch (AdministrationException exception)
+        {
+            error = exception.Message;
+        }
+        catch (Exception)
+        {
+            Logger.LogError("Error procesando una invitación.");
+            error = "No se pudo aceptar la invitación. Inténtalo más tarde o pide a quien te invitó que la reenvíe.";
+        }
+        finally
+        {
+            ClearPasswords();
+        }
     }
+
+    private void ClearPasswords()
+    {
+        Input.Password = "";
+        Input.ConfirmPassword = "";
+    }
+
     private sealed class PasswordInput
     {
         public string? Token { get; set; }
-        public string? Email { get; set; }
-        [Required(ErrorMessage = "Escribe una contraseña."), StringLength(256, MinimumLength = 12, ErrorMessage = "Usa entre 12 y 256 caracteres.")]
+
+        [Required(ErrorMessage = "Escribe una contraseña.")]
+        [StringLength(256, MinimumLength = 12, ErrorMessage = "Usa entre 12 y 256 caracteres.")]
         public string Password { get; set; } = "";
-        [Required(ErrorMessage = "Confirma la contraseña."), Compare(nameof(Password), ErrorMessage = "Las contraseñas no coinciden.")]
+
+        [Required(ErrorMessage = "Confirma la contraseña.")]
+        [StringLength(256, ErrorMessage = "La confirmación es demasiado larga.")]
+        [Compare(nameof(Password), ErrorMessage = "Las contraseñas no coinciden.")]
         public string ConfirmPassword { get; set; } = "";
     }
 }

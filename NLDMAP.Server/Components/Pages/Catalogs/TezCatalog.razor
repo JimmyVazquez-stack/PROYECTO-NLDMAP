@@ -1,6 +1,5 @@
 @page "/admin/catalogos/tez"
 @namespace NLDMAP.Server.Components.Pages.Catalogs
-@rendermode InteractiveServer
 @layout AdministrationLayout
 @attribute [Authorize(Policy = PermissionNames.CatalogsRead)]
 @inherits AdminPageBase
@@ -9,6 +8,17 @@
 <PageTitle>Catálogo de tez | NLDMAP</PageTitle>
 
 <MudStack Spacing="3">
+    <div>
+        @if (editing is not null && CanManage)
+        {
+            <BackButton Label="Listado" OnClick="CancelEdit" Disabled="Busy" />
+        }
+        else
+        {
+            <BackButton Label="Catálogos" Href="/admin/catalogos" />
+        }
+    </div>
+
     <MudStack Row="true" AlignItems="AlignItems.Center"
               Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
         <div>
@@ -18,7 +28,7 @@
             </MudText>
         </div>
 
-        @if (CanManage)
+        @if (CanManage && editing is null)
         {
             <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="Busy"
                        StartIcon="@Icons.Material.Filled.Add" OnClick="NewOption">
@@ -91,91 +101,93 @@
             </EditForm>
         </MudPaper>
     }
+    else
+    {
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudGrid Spacing="2" Class="align-center">
+                <MudItem xs="12" md="8">
+                    <MudTextField T="string" Label="Buscar por nombre o HEX"
+                                  Variant="Variant.Outlined" @bind-Value="search"
+                                  MaxLength="80" Disabled="Busy"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search" />
+                </MudItem>
 
-    <MudPaper Class="pa-4" Elevation="1">
-        <MudGrid Spacing="2" Class="align-center">
-            <MudItem xs="12" md="8">
-                <MudTextField T="string" Label="Buscar por nombre o HEX"
-                              Variant="Variant.Outlined" @bind-Value="search"
-                              MaxLength="80" Disabled="Busy"
-                              Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.Search" />
-            </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                        <MudButton Color="Color.Primary" Variant="Variant.Outlined"
+                                   Disabled="Busy" OnClick="SearchAsync">
+                            Buscar
+                        </MudButton>
+                        <MudButton Disabled="Busy" OnClick="RefreshAsync"
+                                   StartIcon="@Icons.Material.Filled.Refresh">
+                            Actualizar
+                        </MudButton>
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
 
-            <MudItem xs="12" md="4">
-                <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
-                    <MudButton Color="Color.Primary" Variant="Variant.Outlined"
-                               Disabled="Busy" OnClick="SearchAsync">
-                        Buscar
-                    </MudButton>
-                    <MudButton Disabled="Busy" OnClick="RefreshAsync"
-                               StartIcon="@Icons.Material.Filled.Refresh">
-                        Actualizar
-                    </MudButton>
-                </MudStack>
-            </MudItem>
-        </MudGrid>
-    </MudPaper>
+        <MudTable T="TezRow" Items="result.Items" Hover="true"
+                  Breakpoint="Breakpoint.Sm" Elevation="1">
+            <HeaderContent>
+                <MudTh>Color de piel</MudTh>
+                <MudTh>Color HEX</MudTh>
+                <MudTh>Orden</MudTh>
+                <MudTh>Acciones</MudTh>
+            </HeaderContent>
 
-    <MudTable T="TezRow" Items="result.Items" Hover="true"
-              Breakpoint="Breakpoint.Sm" Elevation="1">
-        <HeaderContent>
-            <MudTh>Color de piel</MudTh>
-            <MudTh>Color HEX</MudTh>
-            <MudTh>Orden</MudTh>
-            <MudTh>Acciones</MudTh>
-        </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Color de piel">@context.ColorPiel</MudTd>
 
-        <RowTemplate>
-            <MudTd DataLabel="Color de piel">@context.ColorPiel</MudTd>
+                <MudTd DataLabel="Color HEX">
+                    @if (SwatchStyle(context.ColorHex) is string rowStyle)
+                    {
+                        <span style="@rowStyle" aria-hidden="true"></span>
+                        <span>@context.ColorHex</span>
+                    }
+                    else
+                    {
+                        <span>Sin color asignado</span>
+                    }
+                </MudTd>
 
-            <MudTd DataLabel="Color HEX">
-                @if (SwatchStyle(context.ColorHex) is string rowStyle)
-                {
-                    <span style="@rowStyle" aria-hidden="true"></span>
-                    <span>@context.ColorHex</span>
-                }
-                else
-                {
-                    <span>Sin color asignado</span>
-                }
-            </MudTd>
+                <MudTd DataLabel="Orden">@context.Orden</MudTd>
 
-            <MudTd DataLabel="Orden">@context.Orden</MudTd>
+                <MudTd DataLabel="Acciones">
+                    @if (CanManage)
+                    {
+                        <MudButton Color="Color.Primary" Size="Size.Small"
+                                   Disabled="Busy" OnClick="() => Edit(context)">
+                            Editar
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption">Solo lectura</MudText>
+                    }
+                </MudTd>
+            </RowTemplate>
 
-            <MudTd DataLabel="Acciones">
-                @if (CanManage)
-                {
-                    <MudButton Color="Color.Primary" Size="Size.Small"
-                               Disabled="Busy" OnClick="() => Edit(context)">
-                        Editar
-                    </MudButton>
-                }
-                else
-                {
-                    <MudText Typo="Typo.caption">Solo lectura</MudText>
-                }
-            </MudTd>
-        </RowTemplate>
+            <NoRecordsContent>
+                <MudText Class="pa-4">
+                    @(Busy
+                        ? "Cargando opciones…"
+                        : CanManage
+                            ? "No hay opciones para mostrar. Puedes crear una opción o ajustar la búsqueda."
+                            : "No hay opciones para mostrar.")
+                </MudText>
+            </NoRecordsContent>
+        </MudTable>
 
-        <NoRecordsContent>
-            <MudText Class="pa-4">
-                @(Busy
-                    ? "Cargando opciones…"
-                    : CanManage
-                        ? "No hay opciones para mostrar. Puedes crear una opción o ajustar la búsqueda."
-                        : "No hay opciones para mostrar.")
+        <MudStack Row="true" AlignItems="AlignItems.Center"
+                  Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
+            <MudText Typo="Typo.body2">
+                @result.Total opciones · Página @result.Page de @result.TotalPages
             </MudText>
-        </NoRecordsContent>
-    </MudTable>
-
-    <MudStack Row="true" AlignItems="AlignItems.Center"
-              Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
-        <MudText Typo="Typo.body2">
-            @result.Total opciones · Página @result.Page de @result.TotalPages
-        </MudText>
-        <MudPagination Count="result.TotalPages" Selected="result.Page"
-                       SelectedChanged="ChangePageAsync" Disabled="Busy"
-                       Color="Color.Primary" />
-    </MudStack>
+            <MudPagination Count="result.TotalPages" Selected="result.Page"
+                           SelectedChanged="ChangePageAsync" Disabled="Busy"
+                           Color="Color.Primary" />
+        </MudStack>
+    }
 </MudStack>

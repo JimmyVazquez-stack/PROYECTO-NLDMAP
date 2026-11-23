@@ -4,6 +4,7 @@
 @attribute [ExcludeFromInteractiveRouting]
 @attribute [StreamRendering(false)]
 
+@using Microsoft.AspNetCore.Http
 @using Microsoft.AspNetCore.Identity
 @using NLDMAP.Infrastructure.Identity
 @inject SignInManager<ApplicationUser> SignInManager
@@ -15,12 +16,18 @@
           FormName="login" Enhance="false">
     <LoginPanel @rendermode="InteractiveServer"
                 InitialEmail="@Input.Email"
+                InitialDarkMode="@InitialDarkMode"
                 ErrorMessage="@errorMessage"
                 ShowAccessNotice="@RequiresAdministrationLogin" />
 </EditForm>
 
 @code {
     private string? errorMessage;
+
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private bool InitialDarkMode => HttpContext?.Request.Cookies["nldmap-theme"] != "light";
 
     [SupplyParameterFromForm(FormName = "login")]
     private LoginInput Input { get; set; } = default!;
@@ -46,8 +53,11 @@
             return;
         }
 
-        var result = await SignInManager.PasswordSignInAsync(
-            Input.Email, Input.Password, isPersistent: false, lockoutOnFailure: true);
+        var users = SignInManager.UserManager;
+        var user = await users.FindByEmailAsync(Input.Email);
+        var result = user is not null && !RoleNames.IsCitizenAccount(await users.GetRolesAsync(user))
+            ? await SignInManager.PasswordSignInAsync(user, Input.Password, isPersistent: false, lockoutOnFailure: true)
+            : SignInResult.Failed;
         Input.Password = string.Empty;
 
         if (result.Succeeded)
@@ -63,9 +73,11 @@
     {
         [Required(ErrorMessage = "Ingresa tu correo.")]
         [EmailAddress(ErrorMessage = "Ingresa un correo válido.")]
+        [StringLength(256, ErrorMessage = "El correo es demasiado largo.")]
         public string Email { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Ingresa tu contraseña.")]
+        [StringLength(1024, ErrorMessage = "La contraseña es demasiado larga.")]
         public string Password { get; set; } = string.Empty;
     }
 }
