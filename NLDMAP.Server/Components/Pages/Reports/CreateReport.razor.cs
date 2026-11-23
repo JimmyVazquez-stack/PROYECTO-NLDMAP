@@ -1,10 +1,95 @@
-namespace NLDMAP.Server.Components.Pages.Reports;
+using MudBlazor;
 
+namespace NLDMAP.Server.Components.Pages.Reports;
 
 public partial class CreateReport
 {
+    private readonly CreateReportForm _form = new();
+    private MudStepper? _stepper;
+    private int _activeStep;
+
+    private async Task GoToNextStepAsync()
+    {
+        if (_stepper is not null && _activeStep < 5)
+            await _stepper.NextStepAsync();
+    }
+
+    private async Task GoToPreviousStepAsync()
+    {
+        if (_stepper is not null && _activeStep > 0)
+            await _stepper.PreviousStepAsync();
+    }
+
+    private void ChangeAgeInformationMode(string? mode)
+    {
+        _form.AgeInformationMode = mode;
+
+        if (mode != "birth-date")
+            _form.BirthDate = null;
+
+        if (mode != "approximate-age")
+            _form.ApproximateAgeYears = null;
+    }
+
+    // Modelo de captura de la interfaz. No representa una tabla de base de datos.
+    private sealed class CreateReportForm
+    {
+        // Persona reportada
+        public string? FirstNames { get; set; }
+        public string? PaternalSurname { get; set; }
+        public string? MaternalSurname { get; set; }
+        public string? IdentifyingDescription { get; set; }
+        public string? AgeInformationMode { get; set; }
+        public DateTime? BirthDate { get; set; }
+        public int? ApproximateAgeYears { get; set; }
+        public string? Curp { get; set; }
+        public string? Nicknames { get; set; }
+        public string? GenderId { get; set; }
+        public string? NationalityId { get; set; }
+        public string? OccupationId { get; set; }
+
+        // Características y señas. ComplexionId corresponde a Tez en el mock actual.
+        public string? ComplexionId { get; set; }
+        public decimal? HeightCm { get; set; }
+        public decimal? WeightKg { get; set; }
+        public string? HairDescription { get; set; }
+        public string? ClothingDescription { get; set; }
+        public string? FootwearDescription { get; set; }
+        public string? BodyRegionId { get; set; }
+        public string? MarkTypeId { get; set; }
+        public string? MarkDescription { get; set; }
+
+        // Hechos
+        public string? CircumstanceId { get; set; }
+        public DateTime? EventDate { get; set; }
+        public TimeSpan? EventTime { get; set; }
+        public DateTime? AwarenessDate { get; set; }
+        public string? FactsDescription { get; set; }
+
+        // Ubicación
+        public string? PostalCode { get; set; }
+        public string? StateId { get; set; }
+        public string? MunicipalityId { get; set; }
+        public string? SettlementId { get; set; }
+        public string? Street { get; set; }
+        public string? LocationReferences { get; set; }
+
+        // Información adicional
+        public string? VehicleBrand { get; set; }
+        public string? VehicleModel { get; set; }
+        public string? VehicleColor { get; set; }
+        public string? VehiclePlate { get; set; }
+        public string? InvolvedPersonName { get; set; }
+        public string? InvolvedPersonDescription { get; set; }
+
+        // Decisiones del usuario
+        public bool? AuthorizePublication { get; set; }
+        public bool? KeepIdentityPrivate { get; set; }
+    }
+
     private sealed record CatalogOption(string Id, string Label);
 
+    // Catálogos de demostración conservados del código proporcionado.
     private static readonly CatalogOption[] GenderOptions =
     [
         new("gender-1", "Femenino · Orientación no especificada"),
@@ -15,8 +100,7 @@ public partial class CreateReport
     private static readonly CatalogOption[] NationalityOptions =
     [
         new("nationality-1", "Mexicana"),
-        new("nationality-2", "Guatemalteca"),
-        new("nationality-3", "Colombiana")
+        new("nationality-2", "Extranjera")
     ];
 
     private static readonly CatalogOption[] OccupationOptions =
@@ -50,7 +134,6 @@ public partial class CreateReport
         new("mark-4", "Mancha")
     ];
 
-    // Ejemplos visuales, no un catálogo institucional validado.
     private static readonly CatalogOption[] CircumstanceOptions =
     [
         new("circumstance-1", "Se perdió contacto durante un traslado"),

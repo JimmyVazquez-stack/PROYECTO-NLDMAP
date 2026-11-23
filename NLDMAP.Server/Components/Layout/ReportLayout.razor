@@ -1,42 +1,98 @@
 @namespace NLDMAP.Server.Components.Layout
 @inherits LayoutComponentBase
-@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Routing
 @using MudBlazor
 
-<MudLayout>
+<MudThemeProvider Theme="@_theme" IsDarkMode="false" />
+<MudPopoverProvider />
 
-    <MudAppBar Color="Color.Surface"
-               Elevation="1"
-               Fixed="true">
+<MudLayout Style="min-height: 100dvh;">
+    <a href="#report-main-content"
+       class="visually-hidden-focusable position-fixed rounded pa-3"
+       style="top: 8px; left: 8px; z-index: 1500; background: white; color: #173D3A;"
+       data-enhance-nav="false">
+        Saltar al contenido
+    </a>
 
-        <MudLink Href="/"
-                 Color="Color.Primary"
-                 Underline="Underline.None"
-                 Typo="Typo.h6">
-            NLDMAP
-        </MudLink>
+    <MudAppBar Color="Color.Surface" Fixed="true" Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                       Color="Color.Inherit"
+                       Edge="Edge.Start"
+                       OnClick="ToggleDrawer"
+                       aria-label="@(_drawerOpen ? "Cerrar menú" : "Abrir menú")"
+                       aria-expanded="@(_drawerOpen ? "true" : "false")"
+                       aria-controls="reporter-menu" />
 
-        <MudDivider Vertical="true"
-                    FlexItem="true"
-                    Class="mx-4" />
-
-        <MudText Typo="Typo.subtitle2">
-            Reportes
+        <MudText Typo="Typo.subtitle1" Class="ml-2">
+            Registro de reportes
         </MudText>
 
         <MudSpacer />
 
         <MudButton Href="/"
                    Variant="Variant.Text"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Outlined.Home">
+                   Color="Color.Inherit"
+                   StartIcon="@Icons.Material.Outlined.Home"
+                   Style="min-height: 44px;"
+                   aria-label="Volver al inicio">
             Inicio
         </MudButton>
-
     </MudAppBar>
 
-    <MudMainContent>
+    <MudDrawer id="reporter-menu"
+               @bind-Open="_drawerOpen"
+               Variant="DrawerVariant.Responsive"
+               Breakpoint="Breakpoint.Md"
+               ClipMode="DrawerClipMode.Never"
+               Width="240px"
+               Elevation="1">
+
+        <MudDrawerHeader Class="pa-4">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudPaper Elevation="0"
+                          Class="d-flex align-center justify-center rounded-lg"
+                          Style="width: 40px; height: 40px; flex-shrink: 0; background: transparent; border: 1px solid #173D3A;">
+                    <span aria-hidden="true" style="font-size: 24px; font-weight: 700; color: #173D3A;">N</span>
+                </MudPaper>
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight: 700;">NLDMAP</MudText>
+                    <MudText Typo="Typo.caption">Espacio del Reportante</MudText>
+                </MudStack>
+            </MudStack>
+        </MudDrawerHeader>
+
+        <MudDivider />
+
+        <nav aria-label="Opciones del Reportante">
+            <MudNavMenu Class="pa-2" Color="Color.Primary">
+                <MudNavLink Href="/reportes/crear"
+                            Match="NavLinkMatch.All"
+                            Icon="@Icons.Material.Outlined.AddCircleOutline"
+                            Style="text-decoration: none;">
+                    Crear reporte
+                </MudNavLink>
+                <MudNavLink Disabled="true"
+                            Icon="@Icons.Material.Outlined.FolderOpen"
+                            Style="text-decoration: none;">
+                    Mis envíos · Próximamente
+                </MudNavLink>
+                <MudNavLink Disabled="true"
+                            Icon="@Icons.Material.Outlined.Map"
+                            Style="text-decoration: none;">
+                    Consultar mapa · Próximamente
+                </MudNavLink>
+                <MudNavLink Disabled="true"
+                            Icon="@Icons.Material.Outlined.AccountCircle"
+                            Style="text-decoration: none;">
+                    Mi perfil · Próximamente
+                </MudNavLink>
+            </MudNavMenu>
+        </nav>
+    </MudDrawer>
+
+    <MudMainContent id="report-main-content"
+                    tabindex="-1"
+                    Style="scroll-margin-top: 88px;">
         @Body
     </MudMainContent>
-
 </MudLayout>
