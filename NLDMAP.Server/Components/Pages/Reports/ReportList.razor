@@ -1,0 +1,90 @@
+@using NLDMAP.Application.Reports
+@using NLDMAP.Domain.Reports
+@inherits AdminPageBase
+@inject ReportService Reports
+
+<MudStack Spacing="3">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
+        <MudText Typo="Typo.h4" HtmlTag="h1">@Title</MudText>
+        <AuthorizeView Policy="@PermissionNames.ReportsCreate">
+            <MudButton Href="/reportes/crear" Color="Color.Primary" Variant="Variant.Filled"
+                       StartIcon="@Icons.Material.Outlined.PostAdd">Crear reporte nuevo</MudButton>
+        </AuthorizeView>
+    </MudStack>
+    @if (Error is not null)
+    {
+        <MudAlert Severity="Severity.Error" role="alert">@Error</MudAlert>
+    }
+    @if (Busy)
+    {
+        <MudProgressLinear Indeterminate="true" aria-label="Cargando reportes" />
+    }
+    @if (selected is { } report)
+    {
+        <MudButton OnClick="CloseDetails" StartIcon="@Icons.Material.Outlined.ArrowBack">Volver al listado</MudButton>
+        <ReportDetails Report="report" ShowAccountId="All" />
+    }
+    else
+    {
+        <MudTable T="ReportRow" Items="result.Items" Breakpoint="Breakpoint.Sm" Hover="true">
+            <HeaderContent>
+                <MudTh>Persona reportada</MudTh>
+                @if (All)
+                {
+                    <MudTh>Quién reportó</MudTh>
+                    <MudTh>Fecha de registro</MudTh>
+                }
+                <MudTh>Ubicación</MudTh>
+                <MudTh>Estado de revisión</MudTh>
+                <MudTh>Folio</MudTh>
+                <MudTh>Acciones</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Persona reportada">@context.Persona</MudTd>
+                @if (All)
+                {
+                    <MudTd DataLabel="Quién reportó">@ReportDetails.Join(" ", context.NombreReportante)</MudTd>
+                    <MudTd DataLabel="Fecha de registro">@ReportDetails.RegistrationDate(context.RegistradoUtc)</MudTd>
+                }
+                <MudTd DataLabel="Ubicación">@ReportDetails.Join(", ", context.Municipio, context.Estado)</MudTd>
+                <MudTd DataLabel="Estado de revisión">@context.EstadoRevision</MudTd>
+                <MudTd DataLabel="Folio">@context.Id</MudTd>
+                <MudTd DataLabel="Acciones">
+                    <MudButton OnClick="() => OpenAsync(context.Id)" Disabled="Busy" Size="Size.Small">Ver detalle</MudButton>
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Class="pa-4">@(Busy ? "Cargando reportes…" : "Todavía no hay reportes para mostrar.")</MudText>
+            </NoRecordsContent>
+        </MudTable>
+        <MudPagination Count="result.TotalPages" Selected="result.Page"
+                       SelectedChanged="ChangePageAsync" Disabled="Busy" Color="Color.Primary" />
+    }
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public bool All { get; set; }
+
+    private PageResult<ReportRow> result = new([], 0, 1, 20);
+    private Reporte? selected;
+
+    protected override Task OnInitializedAsync() => ChangePageAsync(1);
+
+    private Task ChangePageAsync(int page) => RunAsync(async () =>
+    {
+        result = await Reports.GetPageAsync(All, page);
+    });
+
+    private Task OpenAsync(string id) => RunAsync(async () =>
+    {
+        selected = await Reports.GetAsync(All, id)
+            ?? throw new AdministrationException("El reporte ya no está disponible en este listado.");
+    });
+
+    private Task CloseDetails() => RunAsync(() =>
+    {
+        selected = null;
+        return Task.CompletedTask;
+    });
+}

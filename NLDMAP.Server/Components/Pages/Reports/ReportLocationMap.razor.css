@@ -1,0 +1,25 @@
+.report-map-container {
+    display: grid;
+    gap: .5rem;
+    min-width: 0;
+}
+
+.report-map {
+    height: clamp(15rem, 45vh, 30rem);
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: .65rem;
+    background: var(--mud-palette-background-gray);
+    isolation: isolate;
+}
+
+.report-map ::deep .report-map-cluster {
+    display: grid;
+    place-items: center;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: #126c61;
+    color: #fff;
+    font-size: .85rem;
+    font-weight: 750;
+    box-shadow: 0 1px 5px #0005;
+}

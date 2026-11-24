@@ -1,0 +1,16 @@
+.nearby-reports {
+    display: grid;
+    gap: .4rem;
+    margin: .6rem 0 0;
+    padding-inline-start: 1.45rem;
+}
+
+.nearby-reports li {
+    padding-block: .3rem;
+    border-bottom: 1px solid var(--mud-palette-divider);
+}
+
+.nearby-reports strong {
+    margin-inline-start: .4rem;
+    white-space: nowrap;
+}

@@ -1,0 +1,92 @@
+@using NLDMAP.Domain.Reports
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div class="report-map-container">
+    <div @ref="container" class="report-map" role="region" aria-label="@Label"></div>
+    @if (error)
+    {
+        <MudAlert Severity="Severity.Warning" role="status">No se pudo cargar el mapa.</MudAlert>
+    }
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "Mapa del reporte";
+    [Parameter] public IReadOnlyList<Pin> Points { get; set; } = [];
+    [Parameter] public Radius? SearchArea { get; set; }
+    [Parameter] public bool Cluster { get; set; }
+    [Parameter] public EventCallback<CoordenadasReporte> OnSelect { get; set; }
+
+    private ElementReference container;
+    private IJSObjectReference? module;
+    private DotNetObjectReference<ReportLocationMap>? callbacks;
+    private IReadOnlyList<Pin>? renderedPoints;
+    private Radius? renderedArea;
+    private bool initialized;
+    private bool disposed;
+    private bool error;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (disposed || error)
+            return;
+
+        try
+        {
+            if (firstRender)
+            {
+                module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/report-location-map.js");
+                if (disposed)
+                {
+                    await module.DisposeAsync();
+                    return;
+                }
+                callbacks = OnSelect.HasDelegate ? DotNetObjectReference.Create(this) : null;
+                await module.InvokeVoidAsync("initialize", container, callbacks, Cluster);
+                initialized = true;
+            }
+
+            if (!disposed && initialized && (!ReferenceEquals(Points, renderedPoints) || SearchArea != renderedArea))
+            {
+                renderedPoints = Points;
+                renderedArea = SearchArea;
+                await module!.InvokeVoidAsync("setPoints", container, renderedPoints, renderedArea);
+            }
+        }
+        catch (JSDisconnectedException) { }
+        catch (JSException)
+        {
+            if (!disposed)
+            {
+                error = true;
+                StateHasChanged();
+            }
+        }
+    }
+
+    [JSInvokable]
+    public Task SelectPoint(double latitude, double longitude) =>
+        !disposed && CoordenadasReporte.EsValida(latitude, longitude)
+            ? OnSelect.InvokeAsync(new CoordenadasReporte(latitude, longitude))
+            : Task.CompletedTask;
+
+    public async ValueTask DisposeAsync()
+    {
+        disposed = true;
+        try
+        {
+            if (module is not null)
+                await module.InvokeVoidAsync("destroy", container);
+            if (module is not null)
+                await module.DisposeAsync();
+        }
+        catch (JSDisconnectedException) { }
+        finally
+        {
+            callbacks?.Dispose();
+        }
+    }
+
+    public sealed record Radius(double Latitude, double Longitude, double Kilometers);
+    public sealed record Pin(double Latitude, double Longitude, string? Label = null);
+}

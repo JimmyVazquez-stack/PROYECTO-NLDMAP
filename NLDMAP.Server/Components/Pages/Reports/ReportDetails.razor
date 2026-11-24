@@ -1,0 +1,190 @@
+@using NLDMAP.Domain.Reports
+@using System.Globalization
+
+<article class="report-detail" aria-labelledby="report-detail-title">
+    <header class="report-overview">
+        <div class="report-overview-icon" aria-hidden="true">
+            <MudIcon Icon="@Icons.Material.Outlined.Assignment" />
+        </div>
+        <div class="report-heading">
+            <p>Persona reportada</p>
+            <h2 id="report-detail-title">@PersonName</h2>
+            <div class="report-folio"><span>Folio</span> <code>@Report.Id</code></div>
+        </div>
+        <div class="report-status">
+            <span>Estado de revisión</span>
+            <strong>@Report.EstadoRevision</strong>
+        </div>
+    </header>
+
+    <div class="report-sections">
+        <section class="report-section report-section-wide" aria-labelledby="report-person">
+            @SectionHeading("report-person", "Identificación y rasgos físicos", Icons.Material.Outlined.Person)
+            <dl class="report-fields report-fields-wide">
+                @Field("Nombre(s)", Report.Persona.Nombres)
+                @Field("Primer apellido", Report.Persona.PrimerApellido)
+                @Field("Segundo apellido", Report.Persona.SegundoApellido)
+                @Field("Fecha de nacimiento", Date(Report.Persona.FechaNacimiento))
+                @Field("Apodos", Report.Persona.Apodos)
+                @Field("Sexo", Report.Persona.Sexo)
+                @Field("Orientación sexual", Report.Persona.OrientacionSexual)
+                @Field("Nacionalidad", Report.Persona.Nacionalidad)
+                @Field("Ocupación", Report.Persona.Ocupacion)
+                <div>
+                    <dt>Tez</dt>
+                    <dd class="report-tone">
+                        @if (ValidHex(Report.Persona.ColorHexTez) is { } hex)
+                        {
+                            <span class="report-swatch" style="@($"background-color:{hex}")" aria-hidden="true"></span>
+                        }
+                        @Known(Report.Persona.NombreTez)
+                    </dd>
+                </div>
+                @Field("CURP", Report.Persona.Curp)
+                @if (Report.Persona.EstaturaCm is { } height)
+                {
+                    @Field("Estatura", $"{height} cm")
+                }
+                @Field("Complexión", Report.Persona.Complexion)
+                @Field("Rasgos físicos y vestimenta", Report.Persona.RasgosFisicos, wide: true)
+            </dl>
+        </section>
+
+        <section class="report-section" aria-labelledby="report-events">
+            @SectionHeading("report-events", "Hechos", Icons.Material.Outlined.EventNote)
+            <dl class="report-fields">
+                @Field("Fecha de los hechos", Date(Report.Hechos.Fecha))
+                @Field("Hora de los hechos", Report.Hechos.Hora)
+                @Field("Fecha en que se percató", Date(Report.Hechos.FechaDeteccion))
+                @Field("Circunstancia", Report.Hechos.Circunstancia)
+                @Field("Descripción de los hechos", Report.Hechos.Descripcion, wide: true)
+            </dl>
+        </section>
+
+        <section class="report-section" aria-labelledby="report-location">
+            @SectionHeading("report-location", "Ubicación", Icons.Material.Outlined.Place)
+            <dl class="report-fields">
+                @Field("Estado", Report.Ubicacion.Estado)
+                @Field("Municipio", Report.Ubicacion.Municipio)
+                @Field("Colonia o asentamiento", Report.Ubicacion.Asentamiento)
+                @Field("Código postal", Report.Ubicacion.CodigoPostal)
+                @Field("Calle", Report.Ubicacion.Calle, wide: true)
+                @Field("Referencias", Report.Ubicacion.Referencias, wide: true)
+                @if (Report.Ubicacion.Coordenadas is { } coordinates)
+                {
+                    @Field("Latitud", coordinates.Latitud.ToString("F6", CultureInfo.InvariantCulture))
+                    @Field("Longitud", coordinates.Longitud.ToString("F6", CultureInfo.InvariantCulture))
+                }
+            </dl>
+            @if (mapPins.Count > 0)
+            {
+                <div class="report-map-preview">
+                    <ReportLocationMap Points="mapPins" />
+                </div>
+            }
+        </section>
+
+        <section class="report-section" aria-labelledby="report-vehicle">
+            @SectionHeading("report-vehicle", "Vehículo relacionado", Icons.Material.Outlined.DirectionsCar)
+            <dl class="report-fields">
+                @Field("Marca", Report.DatosAdicionales.MarcaVehiculo)
+                @Field("Modelo", Report.DatosAdicionales.ModeloVehiculo)
+                @Field("Año", Report.DatosAdicionales.AnoVehiculo?.ToString(CultureInfo.InvariantCulture))
+                @Field("Número de placa", Report.DatosAdicionales.PlacaVehiculo)
+                <div>
+                    <dt>Color del vehículo</dt>
+                    <dd class="report-tone">
+                        @if (ValidHex(Report.DatosAdicionales.ColorHexVehiculo) is { } vehicleHex)
+                        {
+                            <span class="report-swatch" style="@($"background-color:{vehicleHex}")" aria-hidden="true"></span>
+                        }
+                        @Known(Report.DatosAdicionales.ColorVehiculo)
+                    </dd>
+                </div>
+                @Field("Código HEX", Report.DatosAdicionales.ColorHexVehiculo)
+            </dl>
+        </section>
+
+        <section class="report-section" aria-labelledby="report-related">
+            @SectionHeading("report-related", "Persona involucrada", Icons.Material.Outlined.People)
+            <dl class="report-fields">
+                @Field("Nombre", Report.DatosAdicionales.NombrePersonaRelacionada)
+                @Field("Vínculo con la persona reportada", Report.DatosAdicionales.ParentescoPersonaRelacionada)
+                @Field("Descripción de la persona o su participación", Report.DatosAdicionales.DescripcionPersonaRelacionada, wide: true)
+            </dl>
+        </section>
+
+        <section class="report-section" aria-labelledby="report-reporter">
+            @SectionHeading("report-reporter", "Quién reportó", Icons.Material.Outlined.Person)
+            <dl class="report-fields">
+                @if (Report.Reportante is { } reporter)
+                {
+                    @Field("Nombre completo", reporter.NombreCompleto)
+                    @Field("Correo", reporter.Correo)
+                    @Field("Teléfono", reporter.Telefono)
+                }
+                @if (ShowAccountId || Report.Reportante is null)
+                {
+                    @Field("ID de la cuenta", Report.AutorId, wide: true)
+                }
+                @Field("Vínculo con la persona reportada", Report.DatosAdicionales.ParentescoReportante)
+            </dl>
+        </section>
+
+        <section class="report-section" aria-labelledby="report-privacy">
+            @SectionHeading("report-privacy", "Publicación y privacidad", Icons.Material.Outlined.Shield)
+            <dl class="report-fields">
+                @Field("Fecha de registro", RegistrationDate(Report.RegistradoUtc))
+                @Field("Autorización de publicación", Report.AutorizaPublicacion ? "Sí" : "No")
+                @Field("Anonimato público", Report.MantenerAnonimato ? "Sí" : "No")
+            </dl>
+        </section>
+    </div>
+</article>
+
+@code {
+    [Parameter, EditorRequired] public Reporte Report { get; set; } = default!;
+
+    [Parameter] public bool ShowAccountId { get; set; }
+
+    private IReadOnlyList<ReportLocationMap.Pin> mapPins = [];
+
+    protected override void OnParametersSet()
+    {
+        mapPins = Report.Ubicacion.Coordenadas is { } point
+            ? [new ReportLocationMap.Pin(point.Latitud, point.Longitud, "Lugar de los hechos")]
+            : [];
+    }
+
+    private string PersonName
+    {
+        get
+        {
+            var name = Join(" ", Report.Persona.Nombres, Report.Persona.PrimerApellido, Report.Persona.SegundoApellido);
+            return name == "—" ? "Sin nombre registrado" : name;
+        }
+    }
+
+    private static RenderFragment SectionHeading(string id, string title, string icon) => @<h3 id="@id">
+        <span class="report-section-icon"><MudIcon Icon="@icon" Size="Size.Small" aria-hidden="true" /></span>
+        @title
+    </h3>;
+
+    private static RenderFragment Field(string label, string? value, bool wide = false) => @<div class="@(wide ? "report-field-wide" : null)">
+        <dt>@label</dt>
+        <dd>@Known(value)</dd>
+    </div>;
+
+    private static string Known(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
+
+    internal static string? ValidHex(string? value) =>
+        value is { Length: 7 } && value[0] == '#' && value.Skip(1).All(Uri.IsHexDigit) ? value : null;
+
+    internal static string RegistrationDate(DateTime value) =>
+        value == DateTime.UnixEpoch ? "—" : value.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+
+    private static string? Date(DateTime? value) => value?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+
+    internal static string Join(string separator, params string?[] parts) =>
+        Known(string.Join(separator, parts.Where(part => !string.IsNullOrWhiteSpace(part))));
+}

@@ -1,0 +1,82 @@
+@page "/admin/catalogos/sepomex"
+@layout AdministrationLayout
+@attribute [Authorize(Policy = PermissionNames.CatalogsRead)]
+@inherits AdminPageBase
+@using NLDMAP.Application.Catalogs
+@using NLDMAP.Domain.Catalogs
+
+<PageTitle>Códigos postales de SEPOMEX | NLDMAP</PageTitle>
+
+<MudStack Spacing="3">
+    <div><BackButton Label="Catálogos" Href="/admin/catalogos" /></div>
+    <MudText Typo="Typo.h4" HtmlTag="h1">Códigos postales de SEPOMEX</MudText>
+    <MudText Typo="Typo.body2">Consulta los códigos postales y los asentamientos asociados por municipio y estado.</MudText>
+
+    @if (Error is not null)
+    {
+        <MudAlert Severity="Severity.Error" role="alert">@Error</MudAlert>
+    }
+    @if (Notice is not null)
+    {
+        <MudAlert Severity="Severity.Success" role="status">@Notice</MudAlert>
+    }
+    @if (Busy)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="Procesando catálogo postal" />
+    }
+
+    @if (CanManage)
+    {
+        <MudPaper Class="pa-4">
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.h6" HtmlTag="h2">Importar archivo oficial</MudText>
+                <MudText Typo="Typo.body2">
+                    Descarga el TXT nacional o estatal de
+                    <MudLink Href="https://www.correosdemexico.gob.mx/SSLServicios/ConsultaCP/CodigoPostal_Exportar.aspx"
+                             Target="_blank" rel="noopener noreferrer">Correos de México</MudLink>.
+                    Si viene comprimido, extrae el TXT antes de cargarlo.
+                </MudText>
+                <div class="sepomex-drop">
+                    <InputFile @key="uploadKey" OnChange="ImportAsync" accept=".txt,text/plain" disabled="@Busy"
+                               aria-label="Seleccionar el archivo TXT de SEPOMEX" />
+                    <MudIcon Icon="@Icons.Material.Outlined.UploadFile" aria-hidden="true" />
+                    <MudText>@(importing ? $"Importando {fileName}…" : "Arrastra el TXT aquí o haz clic para seleccionarlo")</MudText>
+                    <MudText Typo="Typo.caption">Hasta 32 MB</MudText>
+                </div>
+            </MudStack>
+        </MudPaper>
+    }
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+        <MudTextField T="string" Label="Código postal, asentamiento, municipio, estado o ciudad"
+                      @bind-Value="search" Immediate="true" MaxLength="100" Variant="Variant.Outlined" Disabled="Busy" />
+        <MudButton Variant="Variant.Outlined" Disabled="Busy" OnClick="SearchAsync">Buscar</MudButton>
+    </MudStack>
+
+    <MudTable T="AsentamientoPostal" Items="result.Items" Breakpoint="Breakpoint.Sm" Hover="true">
+        <HeaderContent>
+            <MudTh>Código postal</MudTh>
+            <MudTh>Asentamiento</MudTh>
+            <MudTh>Tipo</MudTh>
+            <MudTh>Municipio</MudTh>
+            <MudTh>Estado</MudTh>
+            <MudTh>Ciudad</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Código postal">@context.CodigoPostal</MudTd>
+            <MudTd DataLabel="Asentamiento">@context.Asentamiento</MudTd>
+            <MudTd DataLabel="Tipo">@context.TipoAsentamiento</MudTd>
+            <MudTd DataLabel="Municipio">@context.Municipio</MudTd>
+            <MudTd DataLabel="Estado">@context.Estado</MudTd>
+            <MudTd DataLabel="Ciudad">@context.Ciudad</MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Class="pa-4">@(Busy ? "Cargando asentamientos…" : "No hay asentamientos para mostrar.")</MudText>
+        </NoRecordsContent>
+    </MudTable>
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
+        <MudText Typo="Typo.body2">@result.Total asentamientos</MudText>
+        <MudPagination Count="result.TotalPages" Selected="result.Page"
+                       SelectedChanged="ChangePageAsync" Disabled="Busy" Color="Color.Primary" />
+    </MudStack>
+</MudStack>

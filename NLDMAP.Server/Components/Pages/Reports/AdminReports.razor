@@ -1,0 +1,7 @@
+@page "/admin/reportes"
+@layout AdministrationLayout
+@attribute [Authorize(Policy = PermissionNames.ReportsRead)]
+
+<PageTitle>Reportes | NLDMAP</PageTitle>
+
+<ReportList Title="Reportes" All="true" />

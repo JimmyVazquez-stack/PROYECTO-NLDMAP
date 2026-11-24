@@ -1,0 +1,28 @@
+@using NLDMAP.Application.Reports
+
+<MudSelect T="Guid?" Label="@Label" Value="Value" ValueChanged="ValueChanged" ToStringFunc="OptionName"
+           Variant="Variant.Outlined" Clearable="true" Disabled="@(Options.Count == 0)">
+    @foreach (var option in Options)
+    {
+        <MudSelectItem T="Guid?" Value="@((Guid?)option.Id)">
+            @if (SwatchStyle(option.ColorHex) is { } swatch)
+            {
+                <span class="catalog-swatch" style="@swatch" aria-hidden="true"></span>
+            }
+            @option.Nombre
+        </MudSelectItem>
+    }
+</MudSelect>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter, EditorRequired] public IReadOnlyList<ReportCatalogOption> Options { get; set; } = [];
+    [Parameter] public Guid? Value { get; set; }
+    [Parameter] public EventCallback<Guid?> ValueChanged { get; set; }
+
+    private string? OptionName(Guid? id) => Options.FirstOrDefault(option => option.Id == id)?.Nombre;
+
+    private static string? SwatchStyle(string? hex) =>
+        hex is { Length: 7 } && hex[0] == '#' && hex.Skip(1).All(Uri.IsHexDigit)
+            ? $"background-color: {hex}" : null;
+}

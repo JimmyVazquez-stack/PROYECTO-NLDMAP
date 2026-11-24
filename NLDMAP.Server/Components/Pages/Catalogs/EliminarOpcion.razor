@@ -1,0 +1,30 @@
+@if (confirming)
+{
+    <MudStack Spacing="1">
+        <MudText Typo="Typo.caption">¿Eliminar «@Nombre»?</MudText>
+        <MudStack Row="true" Wrap="Wrap.Wrap">
+            <MudButton Size="Size.Small" Color="Color.Error" Variant="Variant.Filled" Disabled="Busy"
+                       OnClick="ConfirmAsync">Confirmar</MudButton>
+            <MudButton Size="Size.Small" Disabled="Busy" OnClick="() => confirming = false">Cancelar</MudButton>
+        </MudStack>
+    </MudStack>
+}
+else
+{
+    <MudButton Size="Size.Small" Color="Color.Error" Disabled="Busy"
+               OnClick="() => confirming = true">Eliminar</MudButton>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Nombre { get; set; } = "";
+    [Parameter] public bool Busy { get; set; }
+    [Parameter, EditorRequired] public EventCallback OnConfirm { get; set; }
+
+    private bool confirming;
+
+    private async Task ConfirmAsync()
+    {
+        confirming = false;
+        await OnConfirm.InvokeAsync();
+    }
+}
