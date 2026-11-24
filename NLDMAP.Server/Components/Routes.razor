@@ -7,14 +7,24 @@
                 {
                     @if (authentication.User.Identity?.IsAuthenticated == true)
                     {
-                        <p>Completa tu perfil público para crear reportes.</p>
-                        <a href="/cuenta/perfil" data-enhance-nav="false">Ir a mi perfil</a>
+                        <AuthorizeView Policy="@PermissionNames.Access">
+                            <Authorized><p>Tu cuenta no tiene permiso para crear reportes.</p></Authorized>
+                            <NotAuthorized>
+                                <p>Completa tu perfil para crear reportes.</p>
+                                <a href="/cuenta/perfil" data-enhance-nav="false">Ir a mi perfil</a>
+                            </NotAuthorized>
+                        </AuthorizeView>
                     }
                     else
                     {
                         <p>Inicia sesión con tu cuenta pública para crear reportes.</p>
                         <a href="/cuenta/entrar" data-enhance-nav="false">Iniciar sesión</a>
                     }
+                }
+                else if (routeData.PageType == typeof(Pages.Reports.MyReports))
+                {
+                    <p>Inicia sesión con tu cuenta pública para ver tus reportes.</p>
+                    <a href="/cuenta/entrar" data-enhance-nav="false">Iniciar sesión</a>
                 }
                 else
                 {

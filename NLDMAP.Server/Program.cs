@@ -7,6 +7,7 @@ using NLDMAP.Application.Security;
 using Microsoft.EntityFrameworkCore;
 using NLDMAP.Infrastructure;
 using NLDMAP.Infrastructure.Identity;
+using NLDMAP.Infrastructure.Catalogs;
 using NLDMAP.Infrastructure.Persistence;
 using NLDMAP.Server.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -99,11 +100,16 @@ builder.Services.ConfigureApplicationCookie(options =>
         context.Response.Redirect(citizenPage ? "/cuenta/entrar" : context.RedirectUri);
         return Task.CompletedTask;
     };
-    options.Events.OnRedirectToAccessDenied = context =>
+    options.Events.OnRedirectToAccessDenied = async context =>
     {
-        context.Response.Redirect(context.Request.Path.StartsWithSegments("/reportes")
-            ? "/cuenta/perfil" : context.RedirectUri);
-        return Task.CompletedTask;
+        if (context.Request.Path.StartsWithSegments("/reportes"))
+        {
+            var authorization = context.HttpContext.RequestServices.GetRequiredService<IAuthorizationService>();
+            var staff = await authorization.AuthorizeAsync(context.HttpContext.User, PermissionNames.Access);
+            context.Response.Redirect(staff.Succeeded ? context.RedirectUri : "/cuenta/perfil");
+            return;
+        }
+        context.Response.Redirect(context.RedirectUri);
     };
     options.Events.OnValidatePrincipal = async context =>
     {
@@ -123,6 +129,15 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<AdministrationAccessCache>();
 
 var app = builder.Build();
+
+if (app.Configuration.GetValue<bool>("SeedCatalogs"))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var inserted = await scope.ServiceProvider.GetRequiredService<MongoCatalogSeeder>().SeedAsync();
+    app.Logger.LogInformation("Catálogos inicializados. Opciones nuevas: {Inserted}", inserted);
+    return;
+}
+
 app.UseForwardedHeaders();
 
 // Configure the HTTP request pipeline.

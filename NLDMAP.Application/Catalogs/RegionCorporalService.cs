@@ -21,26 +21,12 @@ public sealed class RegionCorporalService(
         var actor = await AuthorizeAsync(write: true);
         var id = input.Id;
 
-        if (id.HasValue)
-        {
-            var current = await store.GetAsync(id.Value)
-                ?? throw new AdministrationException(
-                    "La región ya no existe. Actualiza el catálogo.");
-
-            if (string.IsNullOrEmpty(input.Version) || input.Version != current.Version)
-            {
-                throw new AdministrationException(
-                    "Otra persona modificó esta región. Actualiza el catálogo y vuelve a editarla.");
-            }
-        }
-
         RegionCorporal region;
         try
         {
             region = new RegionCorporal(
                 id: id ?? Guid.NewGuid(),
-                region: input.Region,
-                orden: input.Orden);
+                region: input.Region);
         }
         catch (ArgumentException exception)
         {
@@ -53,7 +39,13 @@ public sealed class RegionCorporalService(
             return;
         }
 
-        await store.UpdateAsync(region, input.Version, actor.UserId);
+        await store.UpdateAsync(region, actor.UserId);
+    }
+
+    public async Task DeleteAsync(Guid id)
+    {
+        await AuthorizeAsync(true);
+        await store.DeleteAsync(id);
     }
 
     private async Task<ActorSession> AuthorizeAsync(bool write)

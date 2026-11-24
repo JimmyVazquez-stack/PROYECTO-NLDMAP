@@ -69,7 +69,7 @@
             if (result.Succeeded && !await Users.GetTwoFactorEnabledAsync(user))
             {
                 await SignInManager.SignInAsync(user, isPersistent: false);
-                Navigation.NavigateTo("/cuenta/perfil", forceLoad: true);
+                Navigation.NavigateTo("/", forceLoad: true);
                 return;
             }
         }

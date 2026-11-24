@@ -1,0 +1,9 @@
+.catalog-color-swatch {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    margin-inline-end: .35rem;
+    border: 1px solid #999;
+    border-radius: 50%;
+    vertical-align: middle;
+}

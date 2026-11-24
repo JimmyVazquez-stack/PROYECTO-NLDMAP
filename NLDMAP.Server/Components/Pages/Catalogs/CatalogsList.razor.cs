@@ -4,26 +4,15 @@ public partial class CatalogsList
 {
     private static readonly CatalogEntry[] Catalogos =
     [
-        new(
-            Nombre: "Tez",
-            Descripcion: "Tonos de piel para la descripción física del reporte.",
-            Ruta: "/admin/catalogos/tez",
-            Disponible: true),
-
-        new(
-            Nombre: "Regiones corporales",
-            Descripcion: "Zonas del cuerpo que se usan al registrar señas particulares.",
-            Ruta: "/admin/catalogos/regiones-corporales",
-            Disponible: true),
-        new(
-        Nombre: "Tipos de seña",
-        Descripcion: "Clases de señas particulares, como cicatrices o tatuajes.",
-        Ruta: "/admin/catalogos/tipos-sena",
-        Disponible: true)
+        new("Tez", "/admin/catalogos/tez", "Tonos de piel de la escala Monk."),
+        new("Regiones corporales", "/admin/catalogos/regiones-corporales",
+            "Zonas del cuerpo para registrar señas particulares."),
+        new("Tipos de seña", "/admin/catalogos/tipos-sena", "Cicatrices, tatuajes y otras señas particulares."),
+        new("Códigos postales (SEPOMEX)", "/admin/catalogos/sepomex",
+            "Consulta y carga oficial de códigos postales, municipios y asentamientos."),
+        .. CatalogoViews.Todos.Select(catalogo => new CatalogEntry(
+            catalogo.Nombre, $"/admin/catalogos/{catalogo.Ruta}", catalogo.Descripcion))
     ];
-    private sealed record CatalogEntry(
-        string Nombre,
-        string Descripcion,
-        string Ruta,
-        bool Disponible);
+
+    private sealed record CatalogEntry(string Nombre, string Ruta, string? Descripcion = null);
 }

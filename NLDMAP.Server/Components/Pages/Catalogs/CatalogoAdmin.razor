@@ -1,0 +1,120 @@
+@page "/admin/catalogos/{Ruta}"
+@layout AdministrationLayout
+@attribute [Authorize(Policy = PermissionNames.CatalogsRead)]
+@inherits AdminPageBase
+
+<PageTitle>@(catalogo?.Nombre ?? "Catálogo") | NLDMAP</PageTitle>
+
+<MudStack Spacing="3">
+    <div>
+        <BackButton Label="Catálogos" Href="/admin/catalogos" />
+    </div>
+
+    @if (catalogo is null)
+    {
+        <MudAlert Severity="Severity.Warning">No encontramos este catálogo.</MudAlert>
+    }
+    else
+    {
+        var definition = catalogo;
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
+            <MudText Typo="Typo.h4" HtmlTag="h1">@definition.Nombre</MudText>
+            @if (CanManage && editing is null)
+            {
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="Busy"
+                           StartIcon="@Icons.Material.Filled.Add" OnClick="NewOption">Nueva opción</MudButton>
+            }
+        </MudStack>
+
+        <MudText Typo="Typo.body2">@definition.Descripcion</MudText>
+
+        @if (Error is not null)
+        {
+            <MudAlert Severity="Severity.Error" role="alert">@Error</MudAlert>
+        }
+        @if (Notice is not null)
+        {
+            <MudAlert Severity="Severity.Success" role="status">@Notice</MudAlert>
+        }
+        @if (Busy)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="Procesando catálogo" />
+        }
+
+        @if (editing is { } values && CanManage)
+        {
+            <MudPaper Class="pa-4">
+                <EditForm Model="values" OnSubmit="SaveAsync" FormName="catalogo-editor" @key="values">
+                    <MudStack Spacing="3">
+                        <MudText Typo="Typo.h6" HtmlTag="h2">@(editingId.HasValue ? "Editar opción" : "Crear opción")</MudText>
+                        @foreach (var campo in definition.Campos)
+                        {
+                            <MudTextField @key="campo.Clave" T="string" Label="@campo.Etiqueta"
+                                          @bind-Value="values[campo.Clave]" Immediate="true"
+                                          Required="campo.Obligatorio" MaxLength="campo.Maximo"
+                                          InputMode="@(campo.EsEntero ? InputMode.numeric : InputMode.text)"
+                                          HelperText="@(campo.EsHexadecimal ? "Formato #RRGGBB" : null)"
+                                          Variant="Variant.Outlined" Disabled="Busy" />
+                        }
+                        <MudStack Row="true">
+                            <MudButton ButtonType="ButtonType.Submit" Color="Color.Primary"
+                                       Variant="Variant.Filled" Disabled="Busy">Guardar</MudButton>
+                            <MudButton Disabled="Busy" OnClick="CancelEdit">Cancelar</MudButton>
+                        </MudStack>
+                    </MudStack>
+                </EditForm>
+            </MudPaper>
+        }
+        else
+        {
+            <MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+                <MudTextField T="string" Label="Buscar" @bind-Value="search" Immediate="true"
+                              MaxLength="120" Variant="Variant.Outlined" Disabled="Busy" />
+                <MudButton Variant="Variant.Outlined" Disabled="Busy" OnClick="SearchAsync">Buscar</MudButton>
+            </MudStack>
+
+            <MudTable T="FilaCatalogo" Items="result.Items" Breakpoint="Breakpoint.Sm" Hover="true">
+                <HeaderContent>
+                    @foreach (var campo in definition.Campos)
+                    {
+                        <MudTh>@campo.Etiqueta</MudTh>
+                    }
+                    @if (CanManage)
+                    {
+                        <MudTh>Acciones</MudTh>
+                    }
+                </HeaderContent>
+                <RowTemplate>
+                    @foreach (var campo in definition.Campos)
+                    {
+                        var value = context.Valores[campo.Clave];
+                        <MudTd DataLabel="@campo.Etiqueta">
+                            @if (campo.EsHexadecimal && IsHex(value))
+                            {
+                                <span class="catalog-color-swatch" style="@($"background-color:{value}")" aria-hidden="true"></span>
+                            }
+                            @(value.Length == 0 ? "—" : value)
+                        </MudTd>
+                    }
+                    @if (CanManage)
+                    {
+                        <MudTd DataLabel="Acciones">
+                            <MudButton Size="Size.Small" Disabled="Busy" OnClick="() => Edit(context)">Editar</MudButton>
+                        <EliminarOpcion @key="context.Id" Nombre="@context.Valores[definition.Campos[0].Clave]" Busy="Busy"
+                                        OnConfirm="() => DeleteAsync(context.Id)" />
+                        </MudTd>
+                    }
+                </RowTemplate>
+                <NoRecordsContent>
+                    <MudText Class="pa-4">@(Busy ? "Cargando opciones…" : "No hay opciones para mostrar.")</MudText>
+                </NoRecordsContent>
+            </MudTable>
+
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
+                <MudText Typo="Typo.body2">@result.Total opciones</MudText>
+                <MudPagination Count="result.TotalPages" Selected="result.Page"
+                               SelectedChanged="ChangePageAsync" Disabled="Busy" Color="Color.Primary" />
+            </MudStack>
+        }
+    }
+</MudStack>

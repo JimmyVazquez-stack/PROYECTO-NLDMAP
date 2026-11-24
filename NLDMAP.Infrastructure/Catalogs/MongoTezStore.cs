@@ -21,11 +21,17 @@ public sealed class MongoTezStore : ITezStore
         var filter = filters.Empty;
         var search = (query.Search ?? "").Trim();
         if (search.Length > 80) search = search[..80];
+        if (search.Length > 0)
+        {
+            var expression = new BsonRegularExpression(Regex.Escape(search), "i");
+            filter = filters.Regex(document => document.NombreColor, expression) |
+                filters.Regex(document => document.ColorHex, expression);
+        }
 
         var count = checked((int)await collection.CountDocumentsAsync(filter));
         var page = Math.Clamp(query.Page, 1, Math.Max(1, (count + PageSize - 1) / PageSize));
         var documents = await collection.Find(filter)
-            .SortBy(x => x.Orden).ThenBy(x => x.ColorPiel).ThenBy(x => x.Id)
+            .SortBy(x => x.NombreColor).ThenBy(x => x.Id)
             .Skip((page - 1) * PageSize).Limit(PageSize).ToListAsync();
         return new PageResult<TezRow>(documents.Select(x => x.ToRow()).ToArray(), count, page, PageSize);
     }
@@ -43,10 +49,8 @@ public sealed class MongoTezStore : ITezStore
         var document = new TezDocument
         {
             Id = tez.Id,
-            ColorPiel = tez.ColorPiel,
+            NombreColor = tez.NombreColor,
             ColorHex = tez.ColorHex,
-            Orden = tez.Orden,
-            Version = Guid.NewGuid().ToString("N"),
             CreadoEnUtc = now,
             ActualizadoEnUtc = now,
             CreadoPor = actorId,
@@ -56,29 +60,34 @@ public sealed class MongoTezStore : ITezStore
         return collection.InsertOneAsync(document);
     }
 
-    public async Task UpdateAsync(Tez tez, string expectedVersion, string actorId)
+    public async Task UpdateAsync(Tez tez, string actorId)
     {
         var filter = Builders<TezDocument>.Filter.Where(x =>
-            x.Id == tez.Id && x.Version == expectedVersion);
+            x.Id == tez.Id);
 
         var update = MetadataUpdate(actorId)
-            .Set(x => x.ColorPiel, tez.ColorPiel)
-            .Set(x => x.ColorHex, tez.ColorHex)
-            .Set(x => x.Orden, tez.Orden);
+            .Set(x => x.NombreColor, tez.NombreColor)
+            .Set(x => x.ColorHex, tez.ColorHex);
 
         EnsureUpdated(await collection.UpdateOneAsync(filter, update));
     }
-    
 
     private static UpdateDefinition<TezDocument> MetadataUpdate(string actorId) =>
-        Builders<TezDocument>.Update.Set(x => x.Version, Guid.NewGuid().ToString("N"))
-            .Set(x => x.ActualizadoEnUtc, DateTime.UtcNow)
-            .Set(x => x.ActualizadoPor, actorId);
+        Builders<TezDocument>.Update.Set(x => x.ActualizadoEnUtc, DateTime.UtcNow)
+            .Set(x => x.ActualizadoPor, actorId)
+            .Unset("orden")
+            .Unset("version");
 
     private static void EnsureUpdated(UpdateResult result)
     {
         if (result.MatchedCount != 1)
-            throw new AdministrationException("La opción cambió o ya no existe. Actualiza el catálogo y vuelve a intentarlo.");
+            throw new AdministrationException("La opción ya no existe. Actualiza el catálogo y vuelve a intentarlo.");
     }
-    
+
+    public async Task DeleteAsync(Guid id)
+    {
+        var result = await collection.DeleteOneAsync(document => document.Id == id);
+        if (result.DeletedCount == 0)
+            throw new AdministrationException("La opción ya no existe. Actualiza el catálogo.");
+    }
 }

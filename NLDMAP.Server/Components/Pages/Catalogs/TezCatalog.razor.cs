@@ -3,6 +3,7 @@ using NLDMAP.Application.Administration;
 using NLDMAP.Application.Catalogs;
 using NLDMAP.Application.Security;
 using NLDMAP.Server.Components.Administration;
+using NLDMAP.Domain.Catalogs;
 
 namespace NLDMAP.Server.Components.Pages.Catalogs;
 
@@ -34,10 +35,7 @@ public partial class TezCatalog : AdminPageBase
         editing = new TezInput
         {
             Id = row.Id,
-            ColorPiel = row.ColorPiel,
-            ColorHex = row.ColorHex ?? "",
-            Orden = row.Orden,
-            Version = row.Version
+            NombreColor = Tez.TonosMonk.ContainsKey(row.NombreColor) ? row.NombreColor : ""
         };
     }
 
@@ -82,4 +80,10 @@ public partial class TezCatalog : AdminPageBase
                "border: 1px solid #999; border-radius: 50%; vertical-align: middle; " +
                $"background-color: {hex};";
     }
+
+    private Task DeleteAsync(Guid id) => RunAsync(async () =>
+    {
+        await Catalog.DeleteAsync(id);
+        await LoadAsync();
+    }, "Opción eliminada.");
 }

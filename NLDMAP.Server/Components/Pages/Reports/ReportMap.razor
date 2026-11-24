@@ -1,0 +1,208 @@
+@page "/mapa"
+@layout ReportLayout
+@attribute [AllowAnonymous]
+@using NLDMAP.Application.Reports
+@using NLDMAP.Domain.Reports
+@inject ReportService Reports
+@inject ILogger<ReportMap> Logger
+
+<PageTitle>Mapa de reportes | Búsqueda Tlaxcala</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h4" HtmlTag="h1">Mapa de reportes</MudText>
+        <AuthorizeView>
+            <Authorized>
+                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" role="group" aria-label="Reportes que se muestran">
+                    @ScopeButton(MapScope.Public, "Publicados")
+                    @ScopeButton(MapScope.Personal, "Mis reportes")
+                    <AuthorizeView Policy="@PermissionNames.ReportsRead" Context="staff">
+                        @ScopeButton(MapScope.All, "Bandeja administrativa")
+                    </AuthorizeView>
+                </MudStack>
+            </Authorized>
+        </AuthorizeView>
+        <MudText Typo="Typo.body2">@ScopeDescription</MudText>
+
+        <MudPaper Outlined="true" Class="pa-3">
+            <MudStack Spacing="2">
+                <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.subtitle1" HtmlTag="h2">Buscar por radio</MudText>
+                    <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
+                        <MudButton OnClick="ToggleCenterSelection" Variant="Variant.Outlined"
+                                   StartIcon="@Icons.Material.Outlined.MyLocation" aria-pressed="@selectingCenter">
+                            @(selectingCenter ? "Cancelar selección" : center is null ? "Elegir centro" : "Cambiar centro")
+                        </MudButton>
+                        @if (center is not null)
+                        {
+                            <MudButton OnClick="ClearRadius">Quitar filtro</MudButton>
+                        }
+                    </MudStack>
+                </MudStack>
+                <MudSlider T="int" Min="1" Max="100" Step="1" Value="radiusKm" ValueChanged="SetRadius" aria-label="Radio en kilómetros">
+                    @radiusKm km
+                </MudSlider>
+                @if (selectingCenter)
+                {
+                    <MudText Typo="Typo.body2" role="status">Haz clic en el mapa para marcar el centro de búsqueda.</MudText>
+                }
+            </MudStack>
+        </MudPaper>
+
+        @if (loading)
+        {
+            <MudProgressLinear Indeterminate="true" aria-label="Cargando puntos del mapa" />
+        }
+        else if (failed)
+        {
+            <MudAlert Severity="Severity.Warning" role="status">No se pudieron consultar los reportes de esta vista.</MudAlert>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" role="status">@ResultLabel</MudText>
+        }
+
+        <ReportLocationMap Points="pins" SearchArea="searchArea" Cluster="true"
+                           OnSelect="SelectCenter" Label="Mapa de ubicaciones de reportes" />
+
+        @if (center is not null && nearby.Count > 0)
+        {
+            <MudPaper Outlined="true" Class="pa-3">
+                <MudText Typo="Typo.subtitle1" HtmlTag="h2">Reportes cercanos</MudText>
+                <ol class="nearby-reports">
+                    @foreach (var item in nearby.Take(12))
+                    {
+                        <li><span>@PointLabel(item.Point)</span> <strong>@item.Distance.ToString("0.0") km</strong></li>
+                    }
+                </ol>
+                @if (nearby.Count > 12)
+                {
+                    <MudText Typo="Typo.body2">El resto de los resultados aparece en el mapa.</MudText>
+                }
+            </MudPaper>
+        }
+    </MudStack>
+</MudContainer>
+
+@code {
+    private enum MapScope { Public, Personal, All }
+
+    private MapScope scope;
+    private IReadOnlyList<ReportMapPoint> points = [];
+    private IReadOnlyList<ReportLocationMap.Pin> pins = [];
+    private IReadOnlyList<(ReportMapPoint Point, double Distance)> nearby = [];
+    private ReportLocationMap.Radius? searchArea;
+    private CoordenadasReporte? center;
+    private int radiusKm = 10;
+    private int loadVersion;
+    private bool selectingCenter;
+    private bool loading;
+    private bool failed;
+
+    private string ScopeDescription => scope switch
+    {
+        MapScope.Personal => "Ubicaciones registradas en los reportes de tu cuenta.",
+        MapScope.All => "Ubicaciones registradas en los reportes de la bandeja administrativa.",
+        _ => "Ubicaciones aproximadas de reportes autorizados y publicados."
+    };
+
+    private string ResultLabel => center is null
+        ? $"{pins.Count:N0} reportes con ubicación"
+        : $"{pins.Count:N0} reportes dentro de {radiusKm} km";
+
+    protected override Task OnInitializedAsync() => LoadAsync(MapScope.Public);
+
+    private RenderFragment ScopeButton(MapScope value, string label) => @<MudButton
+        OnClick="() => LoadAsync(value)" Color="Color.Primary"
+        Variant="@(scope == value ? Variant.Filled : Variant.Outlined)" aria-pressed="@(scope == value)">
+        @label
+    </MudButton>;
+
+    private async Task LoadAsync(MapScope selected)
+    {
+        var version = ++loadVersion;
+        scope = selected;
+        loading = true;
+        failed = false;
+        points = [];
+        ApplyFilter();
+
+        try
+        {
+            var result = selected == MapScope.Public
+                ? await Reports.GetPublicMapAsync()
+                : await Reports.GetPrivateMapAsync(all: selected == MapScope.All);
+            if (version != loadVersion)
+                return;
+
+            points = result;
+            ApplyFilter();
+        }
+        catch (Exception exception)
+        {
+            if (version != loadVersion)
+                return;
+
+            Logger.LogWarning(exception, "No se pudieron cargar los puntos del mapa");
+            failed = true;
+        }
+        finally
+        {
+            if (version == loadVersion)
+                loading = false;
+        }
+    }
+
+    private void ToggleCenterSelection() => selectingCenter = !selectingCenter;
+
+    private void SelectCenter(CoordenadasReporte coordinates)
+    {
+        if (!selectingCenter)
+            return;
+
+        center = coordinates;
+        selectingCenter = false;
+        ApplyFilter();
+    }
+
+    private void ClearRadius()
+    {
+        center = null;
+        selectingCenter = false;
+        ApplyFilter();
+    }
+
+    private void SetRadius(int value)
+    {
+        radiusKm = value;
+        if (center is not null)
+            ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        if (center is not { } coordinates)
+        {
+            searchArea = null;
+            nearby = [];
+            pins = points.Select(ToPin).ToArray();
+            return;
+        }
+
+        searchArea = new ReportLocationMap.Radius(coordinates.Latitud, coordinates.Longitud, radiusKm);
+        nearby = points.Select(point => (Point: point, Distance: DistanciaGeografica.Kilometros(
+                coordinates, point.Latitud, point.Longitud)))
+            .Where(item => item.Distance <= radiusKm).OrderBy(item => item.Distance).ToArray();
+        pins = nearby.Select(item => ToPin(item.Point)).ToArray();
+    }
+
+    private static ReportLocationMap.Pin ToPin(ReportMapPoint point) =>
+        new(point.Latitud, point.Longitud, PointLabel(point));
+
+    private static string PointLabel(ReportMapPoint point)
+    {
+        var text = string.Join(" · ", new[] { point.Nombre, point.Municipio, point.Estado }
+            .Where(value => !string.IsNullOrWhiteSpace(value)));
+        return text.Length == 0 ? "Reporte" : text;
+    }
+}

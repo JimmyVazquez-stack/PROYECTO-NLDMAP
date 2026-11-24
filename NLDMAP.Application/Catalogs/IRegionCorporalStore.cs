@@ -8,5 +8,6 @@ public interface IRegionCorporalStore
     Task<PageResult<RegionCorporalRow>> GetPageAsync(RegionCorporalQuery query);
     Task<RegionCorporalRow?> GetAsync(Guid id);
     Task CreateAsync(RegionCorporal region, string actorId);
-    Task UpdateAsync(RegionCorporal region, string expectedVersion, string actorId);
+    Task UpdateAsync(RegionCorporal region, string actorId);
+    Task DeleteAsync(Guid id);
 }

@@ -36,8 +36,7 @@ public sealed class MongoRegionCorporalStore : IRegionCorporalStore
         var page = Math.Clamp(query.Page, 1, totalPages);
 
         var documents = await collection.Find(filter)
-            .SortBy(document => document.Orden)
-            .ThenBy(document => document.Region)
+            .SortBy(document => document.Region)
             .ThenBy(document => document.Id)
             .Skip((page - 1) * PageSize)
             .Limit(PageSize)
@@ -61,8 +60,6 @@ public sealed class MongoRegionCorporalStore : IRegionCorporalStore
         {
             Id = region.Id,
             Region = region.Region,
-            Orden = region.Orden,
-            Version = Guid.NewGuid().ToString("N"),
             ActualizadoEnUtc = DateTime.UtcNow,
             ActualizadoPor = actorId
         };
@@ -71,24 +68,31 @@ public sealed class MongoRegionCorporalStore : IRegionCorporalStore
     }
 
     public async Task UpdateAsync(
-        RegionCorporal region, string expectedVersion, string actorId)
+        RegionCorporal region, string actorId)
     {
         var filter = Builders<RegionCorporalDocument>.Filter.Where(document =>
-            document.Id == region.Id && document.Version == expectedVersion);
+            document.Id == region.Id);
 
         var update = Builders<RegionCorporalDocument>.Update
             .Set(document => document.Region, region.Region)
-            .Set(document => document.Orden, region.Orden)
-            .Set(document => document.Version, Guid.NewGuid().ToString("N"))
             .Set(document => document.ActualizadoEnUtc, DateTime.UtcNow)
-            .Set(document => document.ActualizadoPor, actorId);
+            .Set(document => document.ActualizadoPor, actorId)
+            .Unset("orden")
+            .Unset("version");
 
         var result = await collection.UpdateOneAsync(filter, update);
 
         if (result.MatchedCount == 0)
         {
             throw new AdministrationException(
-                "La región cambió o ya no existe. Actualiza el catálogo y vuelve a intentarlo.");
+                "La región ya no existe. Actualiza el catálogo y vuelve a intentarlo.");
         }
+    }
+
+    public async Task DeleteAsync(Guid id)
+    {
+        var result = await collection.DeleteOneAsync(document => document.Id == id);
+        if (result.DeletedCount == 0)
+            throw new AdministrationException("La opción ya no existe. Actualiza el catálogo.");
     }
 }

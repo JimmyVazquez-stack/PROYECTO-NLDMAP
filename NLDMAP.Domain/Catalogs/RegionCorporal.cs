@@ -6,9 +6,8 @@ public sealed class RegionCorporal
     
     public Guid Id { get; }
     public string Region { get; }
-    public int Orden { get;  }
 
-    public RegionCorporal(Guid id, string region, int orden)
+    public RegionCorporal(Guid id, string region)
     {
         if (id == Guid.Empty)
             throw new ArgumentException("El identificador  de la region es necesario");
@@ -19,13 +18,9 @@ public sealed class RegionCorporal
         
         if (region.Length > RegionMaxLength)
             throw new ArgumentException("La region debe tener de 1 a 80 caracteres");
-        if (orden is < 0 or > 9999)
-            throw new ArgumentException("El orden debe ser entre 0 y 9999");
-
 
 
         Id = id;
         Region = region;
-        Orden = orden;
     }
 }

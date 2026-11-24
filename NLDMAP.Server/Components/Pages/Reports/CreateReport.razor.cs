@@ -1,151 +1,252 @@
+using Microsoft.AspNetCore.Components;
 using MudBlazor;
+using NLDMAP.Application.Administration;
+using NLDMAP.Application.Reports;
+using NLDMAP.Domain.Catalogs;
+using NLDMAP.Domain.Reports;
 
 namespace NLDMAP.Server.Components.Pages.Reports;
 
 public partial class CreateReport
 {
-    private readonly CreateReportForm _form = new();
-    private MudStepper? _stepper;
-    private int _activeStep;
+    private const int ReviewStep = 4;
+    [Inject] private ReportService Reports { get; set; } = default!;
+    [Inject] private ILogger<CreateReport> Logger { get; set; } = default!;
 
-    private async Task GoToNextStepAsync()
+    private readonly ReportInput input = new();
+    private ReportCatalogOptions? options;
+    private Reportante? reporter;
+    private IReadOnlyList<AsentamientoPostal> postalMatches = [];
+    private IReadOnlyList<ReportLocationMap.Pin> locationPins = [];
+    private string? postalNotice;
+    private string? folio;
+    private string? reviewPhysicalTraits;
+    private string? reviewVehicle;
+    private ReportCatalogOption? vehicleColor;
+    private string? error;
+    private int activeStep;
+    private bool loading;
+    private bool saving;
+    private bool searchingPostal;
+    private bool hasAliases;
+    private bool hasPersonalDetails;
+    private bool hasDisabilities;
+    private bool hasCircumstance;
+    private bool hasIncidentDates;
+    private bool hasAddress;
+    private bool hasMapPoint;
+    private bool hasReporterRelationship;
+    private bool hasVehicle;
+    private bool hasInvolvedPerson;
+
+    private string ReviewName => JoinKnown(" ", input.Nombres, input.PrimerApellido, input.SegundoApellido, input.Apodos);
+    private string ReviewLocation => JoinKnown(", ", input.Asentamiento, input.Municipio, input.Estado, input.CodigoPostal);
+
+    protected override Task OnInitializedAsync() => LoadCatalogsAsync();
+
+    private async Task LoadCatalogsAsync()
     {
-        if (_stepper is not null && _activeStep < 5)
-            await _stepper.NextStepAsync();
+        loading = true;
+        error = null;
+        try
+        {
+            (options, reporter) = await Reports.GetCreationFormAsync();
+        }
+        catch (AdministrationException exception)
+        {
+            error = exception.Message;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "No se pudieron cargar los datos del formulario de reporte");
+            error = "No se pudieron cargar los datos del formulario. Inténtalo nuevamente.";
+        }
+        finally
+        {
+            loading = false;
+        }
     }
 
-    private async Task GoToPreviousStepAsync()
+    private async Task BeforeStepAsync(StepperInteractionEventArgs action)
     {
-        if (_stepper is not null && _activeStep > 0)
-            await _stepper.PreviousStepAsync();
+        if (saving)
+        {
+            action.Cancel = true;
+            return;
+        }
+
+        error = null;
+        if (action.Action != StepAction.Complete)
+            return;
+
+        try
+        {
+            switch (action.StepIndex)
+            {
+                case 0:
+                    ReportService.ValidatePerson(input);
+                    reviewPhysicalTraits = ReportService.DescribePhysicalTraits(input, options!);
+                    break;
+                case 1: ReportService.ValidateFacts(input); break;
+                case 2: ReportService.ValidateLocation(input); break;
+                case 3:
+                    ReportService.ValidateVehicle(input);
+                    reviewVehicle = JoinKnown(" · ", input.MarcaVehiculo, input.ModeloVehiculo,
+                        input.AnoVehiculo?.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        vehicleColor?.Nombre, input.PlacaVehiculo);
+                    if (reviewVehicle == "Sin datos")
+                        reviewVehicle = null;
+                    break;
+                case ReviewStep:
+                    saving = true;
+                    StateHasChanged();
+                    folio = await Reports.CreateAsync(input);
+                    break;
+            }
+        }
+        catch (AdministrationException exception)
+        {
+            error = exception.Message;
+            action.Cancel = true;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "No se pudo guardar el reporte");
+            error = "No se pudo guardar el reporte. Puedes intentarlo nuevamente.";
+            action.Cancel = true;
+        }
+        finally
+        {
+            saving = false;
+        }
     }
 
-    private void ChangeAgeInformationMode(string? mode)
+    private Task<IEnumerable<ReportCatalogOption>> SearchVehicleColors(string? search, CancellationToken cancellationToken)
     {
-        _form.AgeInformationMode = mode;
-
-        if (mode != "birth-date")
-            _form.BirthDate = null;
-
-        if (mode != "approximate-age")
-            _form.ApproximateAgeYears = null;
+        cancellationToken.ThrowIfCancellationRequested();
+        var colors = options?.Colores ?? [];
+        var term = search?.Trim();
+        return Task.FromResult<IEnumerable<ReportCatalogOption>>(string.IsNullOrEmpty(term) ? colors :
+            colors.Where(color => System.Globalization.CultureInfo.CurrentCulture.CompareInfo.IndexOf(
+                color.Nombre, term, System.Globalization.CompareOptions.IgnoreCase | System.Globalization.CompareOptions.IgnoreNonSpace) >= 0));
     }
 
-    // Modelo de captura de la interfaz. No representa una tabla de base de datos.
-    private sealed class CreateReportForm
+    private void SelectVehicleColor(ReportCatalogOption? color)
     {
-        // Persona reportada
-        public string? FirstNames { get; set; }
-        public string? PaternalSurname { get; set; }
-        public string? MaternalSurname { get; set; }
-        public string? IdentifyingDescription { get; set; }
-        public string? AgeInformationMode { get; set; }
-        public DateTime? BirthDate { get; set; }
-        public int? ApproximateAgeYears { get; set; }
-        public string? Curp { get; set; }
-        public string? Nicknames { get; set; }
-        public string? GenderId { get; set; }
-        public string? NationalityId { get; set; }
-        public string? OccupationId { get; set; }
-
-        // Características y señas. ComplexionId corresponde a Tez en el mock actual.
-        public string? ComplexionId { get; set; }
-        public decimal? HeightCm { get; set; }
-        public decimal? WeightKg { get; set; }
-        public string? HairDescription { get; set; }
-        public string? ClothingDescription { get; set; }
-        public string? FootwearDescription { get; set; }
-        public string? BodyRegionId { get; set; }
-        public string? MarkTypeId { get; set; }
-        public string? MarkDescription { get; set; }
-
-        // Hechos
-        public string? CircumstanceId { get; set; }
-        public DateTime? EventDate { get; set; }
-        public TimeSpan? EventTime { get; set; }
-        public DateTime? AwarenessDate { get; set; }
-        public string? FactsDescription { get; set; }
-
-        // Ubicación
-        public string? PostalCode { get; set; }
-        public string? StateId { get; set; }
-        public string? MunicipalityId { get; set; }
-        public string? SettlementId { get; set; }
-        public string? Street { get; set; }
-        public string? LocationReferences { get; set; }
-
-        // Información adicional
-        public string? VehicleBrand { get; set; }
-        public string? VehicleModel { get; set; }
-        public string? VehicleColor { get; set; }
-        public string? VehiclePlate { get; set; }
-        public string? InvolvedPersonName { get; set; }
-        public string? InvolvedPersonDescription { get; set; }
-
-        // Decisiones del usuario
-        public bool? AuthorizePublication { get; set; }
-        public bool? KeepIdentityPrivate { get; set; }
+        vehicleColor = color;
+        input.ColorVehiculoId = color?.Id;
     }
 
-    private sealed record CatalogOption(string Id, string Label);
+    private string? DisabilityName(Guid id) =>
+        options?.Discapacidades.FirstOrDefault(disability => disability.Id == id)?.Nombre;
 
-    // Catálogos de demostración conservados del código proporcionado.
-    private static readonly CatalogOption[] GenderOptions =
-    [
-        new("gender-1", "Femenino · Orientación no especificada"),
-        new("gender-2", "Masculino · Orientación no especificada"),
-        new("gender-3", "Sexo y orientación no especificados")
-    ];
+    private void ClearPersonalDetails()
+    {
+        input.SexoId = null;
+        input.OrientacionSexualId = null;
+        input.NacionalidadId = null;
+        input.OcupacionId = null;
+    }
 
-    private static readonly CatalogOption[] NationalityOptions =
-    [
-        new("nationality-1", "Mexicana"),
-        new("nationality-2", "Extranjera")
-    ];
+    private void ClearIncidentDates()
+    {
+        input.FechaHechos = null;
+        input.HoraHechos = null;
+        input.FechaDeteccion = null;
+    }
 
-    private static readonly CatalogOption[] OccupationOptions =
-    [
-        new("occupation-1", "Estudiante"),
-        new("occupation-2", "Comerciante"),
-        new("occupation-3", "Docente")
-    ];
+    private void ClearAddress()
+    {
+        PostalCodeChanged(null);
+        input.Estado = null;
+        input.Municipio = null;
+        input.Asentamiento = null;
+        input.Calle = null;
+        input.Referencias = null;
+    }
 
-    private static readonly CatalogOption[] ComplexionOptions =
-    [
-        new("complexion-1", "Clara"),
-        new("complexion-2", "Morena clara"),
-        new("complexion-3", "Morena oscura")
-    ];
+    private void ClearVehicle()
+    {
+        input.MarcaVehiculo = null;
+        input.ModeloVehiculo = null;
+        input.AnoVehiculo = null;
+        input.PlacaVehiculo = null;
+        SelectVehicleColor(null);
+    }
 
-    private static readonly CatalogOption[] BodyRegionOptions =
-    [
-        new("region-1", "Cabeza"),
-        new("region-2", "Cuello"),
-        new("region-3", "Brazo derecho"),
-        new("region-4", "Brazo izquierdo"),
-        new("region-5", "Espalda")
-    ];
+    private void ClearInvolvedPerson()
+    {
+        input.NombrePersonaRelacionada = null;
+        input.ParentescoPersonaRelacionadaId = null;
+        input.DescripcionPersonaRelacionada = null;
+    }
 
-    private static readonly CatalogOption[] MarkTypeOptions =
-    [
-        new("mark-1", "Cicatriz"),
-        new("mark-2", "Tatuaje"),
-        new("mark-3", "Lunar"),
-        new("mark-4", "Mancha")
-    ];
+    private void PostalCodeChanged(string? value)
+    {
+        input.CodigoPostal = value;
+        postalMatches = [];
+        postalNotice = null;
+    }
 
-    private static readonly CatalogOption[] CircumstanceOptions =
-    [
-        new("circumstance-1", "Se perdió contacto durante un traslado"),
-        new("circumstance-2", "No regresó a su domicilio"),
-        new("circumstance-3", "Circunstancia desconocida")
-    ];
+    private async Task FindPostalAsync()
+    {
+        var code = input.CodigoPostal?.Trim();
+        if (code is null || code.Length != 5 || !code.All(char.IsAsciiDigit))
+        {
+            postalNotice = "Escribe un código postal de cinco dígitos.";
+            return;
+        }
 
-    private static readonly CatalogOption[] MunicipalityOptions =
-    [
-        new("municipality-1", "Tlaxcala"),
-        new("municipality-2", "Apizaco"),
-        new("municipality-3", "Huamantla"),
-        new("municipality-4", "Chiautempan")
-    ];
+        searchingPostal = true;
+        postalNotice = null;
+        try
+        {
+            var matches = await Reports.FindPostalAsync(code);
+            if (code != input.CodigoPostal?.Trim())
+                return;
+
+            postalMatches = matches;
+            if (matches.Count == 0)
+                postalNotice = "No hay resultados en SEPOMEX. Puedes escribir la ubicación manualmente.";
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "No se pudo consultar SEPOMEX para el reporte");
+            postalNotice = "No se pudo consultar SEPOMEX. Puedes escribir la ubicación manualmente.";
+        }
+        finally
+        {
+            searchingPostal = false;
+        }
+    }
+
+    private void SelectPostal(string? key)
+    {
+        if (postalMatches.FirstOrDefault(item => item.Clave == key) is not { } match)
+            return;
+
+        input.Estado = match.Estado;
+        input.Municipio = match.Municipio;
+        input.Asentamiento = match.Asentamiento;
+    }
+
+    private void SelectCoordinates(CoordenadasReporte point) => SetCoordinates(point.Latitud, point.Longitud);
+    private void SetLatitude(double? value) => SetCoordinates(value, input.Longitud);
+    private void SetLongitude(double? value) => SetCoordinates(input.Latitud, value);
+    private void ClearCoordinates() => SetCoordinates(null, null);
+
+    private void SetCoordinates(double? latitude, double? longitude)
+    {
+        input.Latitud = latitude;
+        input.Longitud = longitude;
+        locationPins = latitude is { } lat && longitude is { } lng && CoordenadasReporte.EsValida(lat, lng)
+            ? [new ReportLocationMap.Pin(lat, lng)]
+            : [];
+    }
+
+    private static string JoinKnown(string separator, params string?[] parts)
+    {
+        var text = string.Join(separator, parts.Where(part => !string.IsNullOrWhiteSpace(part)));
+        return text.Length == 0 ? "Sin datos" : text;
+    }
 }

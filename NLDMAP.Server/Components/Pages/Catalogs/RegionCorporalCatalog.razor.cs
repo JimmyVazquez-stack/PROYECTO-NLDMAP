@@ -33,9 +33,7 @@ public partial class RegionCorporalCatalog : AdminPageBase
         editing = new RegionCorporalInput
         {
             Id = row.Id,
-            Region = row.Region,
-            Orden = row.Orden,
-            Version = row.Version
+            Region = row.Region
         };
     }
 
@@ -62,4 +60,10 @@ public partial class RegionCorporalCatalog : AdminPageBase
         page = selected;
         await LoadAsync();
     });
+
+    private Task DeleteAsync(Guid id) => RunAsync(async () =>
+    {
+        await Catalog.DeleteAsync(id);
+        await LoadAsync();
+    }, "Opción eliminada.");
 }

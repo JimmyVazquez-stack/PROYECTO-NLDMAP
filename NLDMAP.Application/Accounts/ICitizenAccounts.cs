@@ -36,4 +36,7 @@ public sealed class CitizenProfileInput
 }
 
 public sealed record CitizenProfile(
-    string DisplayName, string? Email, bool EmailConfirmed, string Role, bool CanCreateReports);
+    string DisplayName, string? Email, bool EmailConfirmed, string Role, bool CanCreateReports)
+{
+    public string? PhoneNumber { get; init; }
+}

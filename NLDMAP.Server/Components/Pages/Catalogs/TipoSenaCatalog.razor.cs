@@ -33,9 +33,7 @@ public partial class TipoSenaCatalog : AdminPageBase
         editing = new TipoSenaInput
         {
             Id = row.Id,
-            Nombre = row.Nombre,
-            Orden = row.Orden,
-            Version = row.Version
+            Nombre = row.Nombre
         };
     }
 
@@ -62,4 +60,10 @@ public partial class TipoSenaCatalog : AdminPageBase
         page = selected;
         await LoadAsync();
     });
+
+    private Task DeleteAsync(Guid id) => RunAsync(async () =>
+    {
+        await Catalog.DeleteAsync(id);
+        await LoadAsync();
+    }, "Opción eliminada.");
 }

@@ -1,719 +1,345 @@
 @page "/reportes/crear"
-@namespace NLDMAP.Server.Components.Pages.Reports
-@using NLDMAP.Server.Components.Layout
-@using MudBlazor
-@using Microsoft.AspNetCore.Components.Web
 @layout ReportLayout
+@attribute [Authorize(Policy = PermissionNames.ReportsCreate)]
+@using NLDMAP.Domain.Catalogs
+@using NLDMAP.Application.Reports
 
-<PageTitle>Crear reporte | NLDMAP</PageTitle>
+<PageTitle>Crear reporte nuevo | Búsqueda Tlaxcala</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-6">
-    <MudStack Spacing="4">
-        <MudStack Spacing="1">
-            <MudText Typo="Typo.overline">NLDMAP / Registro de reporte</MudText>
-            <MudText Typo="Typo.h4" HtmlTag="h1">Crear reporte</MudText>
-            <MudText Typo="Typo.body1">
-                Comparte la información conocida sobre la persona y los hechos relacionados con su desaparición.
-            </MudText>
-        </MudStack>
+<MudPopoverProvider />
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-6">
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h4" HtmlTag="h1">Crear reporte nuevo</MudText>
+        @if (folio is null)
+        {
+            <MudText>Escribe los datos que conozcas. Puedes dejar en blanco los campos opcionales.</MudText>
+        }
+        @if (error is not null)
+        {
+            <MudAlert Severity="Severity.Error" role="alert">@error</MudAlert>
+        }
 
-        <MudGrid Spacing="4">
-            <MudItem xs="12" md="3">
-                <MudPaper Outlined="true" Elevation="0" Class="pa-3">
-                    <MudText Typo="Typo.subtitle2" Class="mb-2">Secciones del reporte</MudText>
-                    <MudStepper @ref="_stepper"
-                                @bind-ActiveIndex="_activeStep"
-                                Vertical="true"
-                                NonLinear="false"
-                                ShowResetButton="false">
-                        <ChildContent>
-                            <MudStep Title="Persona" />
-                            <MudStep Title="Características" />
-                            <MudStep Title="Hechos" />
-                            <MudStep Title="Ubicación" />
-                            <MudStep Title="Información adicional" />
-                            <MudStep Title="Privacidad y revisión" />
-                        </ChildContent>
-                        <ActionContent Context="navigation">
-                        </ActionContent>
-                    </MudStepper>
-                </MudPaper>
-            </MudItem>
-
-            <MudItem xs="12" md="9">
-                <MudStack Spacing="3">
-                    <MudText Typo="Typo.body2" aria-live="polite">
-                        Paso @(_activeStep + 1) de 6
-                    </MudText>
-
-                    @switch (_activeStep)
-                    {
-                        case 0:
-                            @* PERSONA REPORTADA *@
-                            <MudPaper Outlined="true" Elevation="0" Class="pa-6">
-                                <MudStack Spacing="4">
-                                    <MudStack Spacing="1">
-                                        <MudText Typo="Typo.overline" Color="Color.Primary">
-                                            01 · Identificación
-                                        </MudText>
-
-                                        <MudText Typo="Typo.h5" HtmlTag="h2">
-                                            Persona reportada
-                                        </MudText>
-
-                                        <MudText Typo="Typo.body2">
-                                            Escribe los datos que conozcas. Si desconoces el nombre, proporciona una descripción identificativa. No inventes datos para completar la captura.
-                                        </MudText>
-                                    </MudStack>
-
-                                    <MudGrid Spacing="3">
-                                        <MudItem xs="12" md="4">
-                                            <MudTextField T="string"
-                                                          @bind-Value="_form.FirstNames"
-                                                          Label="Nombre(s)"
-                                                          Variant="Variant.Outlined" />
-                                        </MudItem>
-
-                                        <MudItem xs="12" md="4">
-                                            <MudTextField T="string"
-                                                          @bind-Value="_form.PaternalSurname"
-                                                          Label="Primer apellido"
-                                                          Variant="Variant.Outlined" />
-                                        </MudItem>
-
-                                        <MudItem xs="12" md="4">
-                                            <MudTextField T="string"
-                                                          @bind-Value="_form.MaternalSurname"
-                                                          Label="Segundo apellido"
-                                                          Variant="Variant.Outlined" />
-                                        </MudItem>
-
-                                        <MudItem xs="12">
-                                <MudTextField T="string"
-                                              @bind-Value="_form.IdentifyingDescription"
-                                              Label="Descripción identificativa"
-                                              HelperText="Si desconoces el nombre, describe cómo se identifica o reconoce a la persona."
-                                              Variant="Variant.Outlined"
-                                              Lines="3" />
-                            </MudItem>
-
-                            <MudItem xs="12" md="6">
-                                <MudSelect T="string"
-                                           Value="@_form.AgeInformationMode"
-                                           ValueChanged="ChangeAgeInformationMode"
-                                           Label="¿Qué información conoces sobre su edad?"
-                                           Variant="Variant.Outlined"
-                                           HelperText="Al cambiar de opción se borra el dato de edad o fecha que deja de utilizarse.">
-                                    <MudSelectItem T="string" Value="@("birth-date")">Conozco la fecha de nacimiento</MudSelectItem>
-                                    <MudSelectItem T="string" Value="@("approximate-age")">Conozco una edad aproximada</MudSelectItem>
-                                    <MudSelectItem T="string" Value="@("unknown")">Desconozco esta información</MudSelectItem>
-                                </MudSelect>
-                            </MudItem>
-
-                            @if (_form.AgeInformationMode == "birth-date")
-                            {
-                                <MudItem xs="12" md="6">
-                                    <MudDatePicker @bind-Date="_form.BirthDate"
-                                                   Label="Fecha de nacimiento"
-                                                   Variant="Variant.Outlined"
-                                                   DateFormat="dd/MM/yyyy"
-                                                   Editable="true" />
-                                </MudItem>
-                            }
-                            else if (_form.AgeInformationMode == "approximate-age")
-                            {
-                                <MudItem xs="12" md="6">
-                                    <MudNumericField T="int?"
-                                                     @bind-Value="_form.ApproximateAgeYears"
-                                                     Label="Edad aproximada"
-                                                     Variant="Variant.Outlined"
-                                                     Min="0"
-                                                     Adornment="Adornment.End"
-                                                     AdornmentText="años"
-                                                     HideSpinButtons="true"
-                                                     HelperText="Años cumplidos aproximados. Para menores de un año, indica 0." />
-                                </MudItem>
-                            }
-
-                                        <MudItem xs="12" md="6">
-                                            <MudTextField T="string"
-                                                          @bind-Value="_form.Curp"
-                                                          Label="CURP"
-                                                          MaxLength="18"
-                                                          Variant="Variant.Outlined" />
-                                        </MudItem>
-
-                                        <MudItem xs="12" md="6">
-                                            <MudTextField T="string"
-                                                          @bind-Value="_form.Nicknames"
-                                                          Label="Apodos"
-                                                          Variant="Variant.Outlined" />
-                                        </MudItem>
-
-                                        <MudItem xs="12" md="6">
-                                            <MudSelect T="string"
-                                                       @bind-Value="_form.GenderId"
-                                                          Label="Sexo y orientación sexual"
-                                                       Variant="Variant.Outlined"
-                                                       Clearable="true">
-                                                @foreach (var option in GenderOptions)
-                                                {
-                                                    <MudSelectItem T="string" Value="@option.Id">
-                                                        @option.Label
-                                                    </MudSelectItem>
-                                                }
-                                            </MudSelect>
-                                        </MudItem>
-
-                                        <MudItem xs="12" md="6">
-                                            <MudSelect T="string"
-                                                       @bind-Value="_form.NationalityId"
-                                                       Label="Nacionalidad"
-                                                       Variant="Variant.Outlined"
-                                                       Clearable="true">
-                                                @foreach (var option in NationalityOptions)
-                                                {
-                                                    <MudSelectItem T="string" Value="@option.Id">
-                                                        @option.Label
-                                                    </MudSelectItem>
-                                                }
-                                            </MudSelect>
-                                        </MudItem>
-
-                                        <MudItem xs="12" md="6">
-                                            <MudSelect T="string"
-                                                       @bind-Value="_form.OccupationId"
-                                                          Label="Ocupación"
-                                                       Variant="Variant.Outlined"
-                                                       Clearable="true">
-                                                @foreach (var option in OccupationOptions)
-                                                {
-                                                    <MudSelectItem T="string" Value="@option.Id">
-                                                        @option.Label
-                                                    </MudSelectItem>
-                                                }
-                                            </MudSelect>
-                                        </MudItem>
+        @if (loading || saving)
+        {
+            <MudProgressLinear Indeterminate="true" aria-label="Procesando reporte" />
+        }
+        @if (loading)
+        {
+            <MudText>Cargando catálogos…</MudText>
+        }
+        else if (folio is not null)
+        {
+            <MudAlert Severity="Severity.Success" role="status">Reporte guardado. Folio: <strong>@folio</strong></MudAlert>
+            <MudStack Row="true" Wrap="Wrap.Wrap">
+                <MudButton Href="/reportes/mis-reportes" Color="Color.Primary" Variant="Variant.Filled">Ver mis reportes</MudButton>
+                <MudButton Href="/">Volver al inicio</MudButton>
+            </MudStack>
+        }
+        else if (options is { } catalog && reporter is { } account)
+        {
+            <MudPaper Outlined="true" Class="pa-3 pa-sm-5">
+                <MudStepper @bind-ActiveIndex="activeStep" OnPreviewInteraction="BeforeStepAsync"
+                            ShowResetButton="false" ScrollableNavigation="true">
+                    <ChildContent>
+                        <MudStep Title="Persona">
+                            <MudStack Spacing="3" Class="py-4">
+                                <MudGrid>
+                                    <MudItem xs="12" sm="4"><MudTextField T="string" Label="Nombre(s)" @bind-Value="input.Nombres" Immediate="true" MaxLength="120" Variant="Variant.Outlined" /></MudItem>
+                                    <MudItem xs="12" sm="4"><MudTextField T="string" Label="Primer apellido" @bind-Value="input.PrimerApellido" MaxLength="120" Variant="Variant.Outlined" /></MudItem>
+                                    <MudItem xs="12" sm="4"><MudTextField T="string" Label="Segundo apellido" @bind-Value="input.SegundoApellido" MaxLength="120" Variant="Variant.Outlined" /></MudItem>
+                                    <MudItem xs="12" sm="6"><MudTextField T="string" Label="CURP de la persona reportada" @bind-Value="input.Curp" Immediate="true" MaxLength="18" Variant="Variant.Outlined" /></MudItem>
+                                    <MudItem xs="12" sm="6"><MudDatePicker Label="Fecha de nacimiento" @bind-Date="input.FechaNacimiento" MaxDate="@DateTime.Today" DateFormat="dd/MM/yyyy" Variant="Variant.Outlined" Clearable="true" /></MudItem>
+                                </MudGrid>
+                                <OptionalReportFields Label="apodos" @bind-Added="hasAliases" OnRemove="@(() => input.Apodos = null)">
+                                    <MudTextField T="string" Label="Apodos" @bind-Value="input.Apodos"
+                                                  Immediate="true" MaxLength="120" Variant="Variant.Outlined" />
+                                </OptionalReportFields>
+                                <OptionalReportFields Label="otros datos personales" @bind-Added="hasPersonalDetails" OnRemove="ClearPersonalDetails">
+                                    <MudGrid>
+                                        <MudItem xs="12" sm="6"><ReportCatalogSelect Label="Sexo" Options="catalog.Sexos" @bind-Value="input.SexoId" /></MudItem>
+                                        <MudItem xs="12" sm="6"><ReportCatalogSelect Label="Orientación sexual" Options="catalog.Orientaciones" @bind-Value="input.OrientacionSexualId" /></MudItem>
+                                        <MudItem xs="12" sm="6"><ReportCatalogSelect Label="Nacionalidad" Options="catalog.Nacionalidades" @bind-Value="input.NacionalidadId" /></MudItem>
+                                        <MudItem xs="12" sm="6"><ReportCatalogSelect Label="Ocupación" Options="catalog.Ocupaciones" @bind-Value="input.OcupacionId" /></MudItem>
                                     </MudGrid>
-
-                                    <MudDivider />
-
-                                    <MudPaper Outlined="true" Elevation="0" Class="pa-6">
-                                        <MudStack AlignItems="AlignItems.Center" Spacing="2">
-                                            <MudIcon Icon="@Icons.Material.Outlined.Person"
-                                                     Size="Size.Large"
-                                                     Color="Color.Primary" />
-
-                                            <MudText Typo="Typo.subtitle1">
-                                                Fotografía de la persona
-                                            </MudText>
-
-                                            <MudText Typo="Typo.body2">
-                                                JPG, JPEG o PNG · Hasta 5 MB
-                                            </MudText>
-
-                                            <MudButton Variant="Variant.Outlined"
-                                                       Color="Color.Primary"
-                                                       StartIcon="@Icons.Material.Outlined.AddPhotoAlternate"
-                                                       Disabled="true">
-                                                Seleccionar fotografía
-                                            </MudButton>
-
-                                            <MudText Typo="Typo.caption">
-                                                Carga de imagen pendiente en este mock.
-                                            </MudText>
-                                        </MudStack>
-                                    </MudPaper>
+                                </OptionalReportFields>
+                                <MudText Typo="Typo.h6">Rasgos físicos y vestimenta</MudText>
+                                <MudGrid>
+                                    <MudItem xs="12" sm="4">
+                                        <MudNumericField T="int?" Label="Estatura (cm)" @bind-Value="input.EstaturaCm"
+                                                         Placeholder="Ej. 170" HideSpinButtons="true" Variant="Variant.Outlined" />
+                                    </MudItem>
+                                    <MudItem xs="12" sm="4">
+                                        <ReportCatalogSelect Label="Tez" Options="catalog.Tonos" @bind-Value="input.TezId" />
+                                    </MudItem>
+                                    <MudItem xs="12" sm="4">
+                                        <ReportCatalogSelect Label="Complexión" Options="catalog.Complexiones" @bind-Value="input.ComplexionId" />
+                                    </MudItem>
+                                </MudGrid>
+                                <MudStack Spacing="2">
+                                    <MudText Typo="Typo.subtitle1">Cabello</MudText>
+                                    @if (input.Cabello is { } cabello)
+                                    {
+                                        <MudPaper @key="cabello" Outlined="true" Class="pa-3">
+                                            <MudStack Spacing="2">
+                                                <ReportCatalogSelect Label="Tipo de cabello" Options="catalog.TiposCabello" @bind-Value="cabello.TipoId" />
+                                                @if (cabello.TipoId.HasValue)
+                                                {
+                                                    <MudTextField T="string" Label="Detalle del cabello (opcional)" @bind-Value="cabello.Detalle"
+                                                                  Placeholder="Ej. teñido de morado" Immediate="true" MaxLength="@ReportInput.TraitDetailMaxLength" Variant="Variant.Outlined" />
+                                                }
+                                                <MudButton Class="align-self-start" Size="Size.Small" OnClick="@(() => input.Cabello = null)">Quitar tipo de cabello</MudButton>
+                                            </MudStack>
+                                        </MudPaper>
+                                    }
+                                    else
+                                    {
+                                        <MudButton Class="align-self-start" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add"
+                                                   Disabled="@(catalog.TiposCabello.Count == 0)" OnClick="@(() => input.Cabello = new())">Agregar tipo de cabello</MudButton>
+                                    }
                                 </MudStack>
-                            </MudPaper>
-                            break;
-
-                        case 1:
-                            @* CARACTERÍSTICAS *@
-                            <MudPaper Outlined="true" Elevation="0" Class="pa-6">
-                                <MudStack Spacing="4">
-                                    <MudStack Spacing="1">
-                                        <MudText Typo="Typo.overline" Color="Color.Primary">
-                                            02 · Características
-                                        </MudText>
-
-                                        <MudText Typo="Typo.h5" HtmlTag="h2">
-                                            Características y señas
-                                        </MudText>
-
-                                        <MudText Typo="Typo.body2">
-                                            Rasgos que pueden ayudar a identificar a la persona.
-                                        </MudText>
-                                    </MudStack>
-
-                                    <MudGrid Spacing="3">
-                                        <MudItem xs="12" md="4">
-                                            <MudSelect T="string"
-                                                       @bind-Value="_form.ComplexionId"
-                                                          Label="Tez"
-                                                       Variant="Variant.Outlined"
-                                                       Clearable="true">
-                                                @foreach (var option in ComplexionOptions)
+                                <MudStack Spacing="2">
+                                    <MudText Typo="Typo.subtitle1">Calzado</MudText>
+                                    @if (input.Calzado is { } calzado)
+                                    {
+                                        <MudPaper @key="calzado" Outlined="true" Class="pa-3">
+                                            <MudStack Spacing="2">
+                                                <ReportCatalogSelect Label="Tipo de calzado" Options="catalog.TiposCalzado" @bind-Value="calzado.TipoId" />
+                                                @if (calzado.TipoId.HasValue)
                                                 {
-                                                    <MudSelectItem T="string" Value="@option.Id">
-                                                        @option.Label
-                                                    </MudSelectItem>
+                                                    <MudTextField T="string" Label="Detalle del calzado (opcional)" @bind-Value="calzado.Detalle"
+                                                                  Placeholder="Ej. tenis blancos con agujetas rojas" Immediate="true" MaxLength="@ReportInput.TraitDetailMaxLength" Variant="Variant.Outlined" />
                                                 }
-                                            </MudSelect>
-                                        </MudItem>
-
-                                        <MudItem xs="12" md="4">
-                                            <MudNumericField T="decimal?"
-                                                             @bind-Value="_form.HeightCm"
-                                                             Label="Estatura"
-                                                             Variant="Variant.Outlined"
-                                                             Adornment="Adornment.End"
-                                                             AdornmentText="cm"
-                                                             HideSpinButtons="true" />
-                                        </MudItem>
-
-                                        <MudItem xs="12" md="4">
-                                            <MudNumericField T="decimal?"
-                                                             @bind-Value="_form.WeightKg"
-                                                          Label="Peso"
-                                                             Variant="Variant.Outlined"
-                                                             Adornment="Adornment.End"
-                                                             AdornmentText="kg"
-                                                             HideSpinButtons="true" />
-                                        </MudItem>
-
-                                        <MudItem xs="12">
-                                            <MudTextField T="string"
-                                                          @bind-Value="_form.HairDescription"
-                                                          Label="Descripción del cabello"
-                                                          Placeholder="Color, longitud y características"
-                                                          Variant="Variant.Outlined"
-                                                          Lines="2" />
-                                        </MudItem>
-
-                                        <MudItem xs="12" md="6">
-                                            <MudTextField T="string"
-                                                          @bind-Value="_form.ClothingDescription"
-                                                          Label="Descripción de la vestimenta"
-                                                          Variant="Variant.Outlined"
-                                                          Lines="3" />
-                                        </MudItem>
-
-                                        <MudItem xs="12" md="6">
-                                            <MudTextField T="string"
-                                                          @bind-Value="_form.FootwearDescription"
-                                                          Label="Descripción del calzado"
-                                                          Variant="Variant.Outlined"
-                                                          Lines="3" />
-                                        </MudItem>
-                                    </MudGrid>
-
-                                    <MudDivider />
-
-                                    <MudText Typo="Typo.h6" HtmlTag="h3">
-                                        Señas particulares
-                                    </MudText>
-
-                                    <MudGrid Spacing="3">
-                                        <MudItem xs="12" md="6">
-                                            <MudSelect T="string"
-                                                       @bind-Value="_form.BodyRegionId"
-                                                          Label="Región corporal"
-                                                       Variant="Variant.Outlined"
-                                                       Clearable="true">
-                                                @foreach (var option in BodyRegionOptions)
+                                                <MudButton Class="align-self-start" Size="Size.Small" OnClick="@(() => input.Calzado = null)">Quitar tipo de calzado</MudButton>
+                                            </MudStack>
+                                        </MudPaper>
+                                    }
+                                    else
+                                    {
+                                        <MudButton Class="align-self-start" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add"
+                                                   Disabled="@(catalog.TiposCalzado.Count == 0)" OnClick="@(() => input.Calzado = new())">Agregar tipo de calzado</MudButton>
+                                    }
+                                </MudStack>
+                                <MudStack Spacing="2">
+                                    <MudText Typo="Typo.subtitle1">Ropa</MudText>
+                                    @foreach (var prenda in input.Prendas)
+                                    {
+                                        <MudPaper @key="prenda" Outlined="true" Class="pa-3">
+                                            <MudStack Spacing="2">
+                                                <ReportCatalogSelect Label="Tipo de prenda" Options="catalog.TiposPrenda" @bind-Value="prenda.TipoId" />
+                                                @if (prenda.TipoId.HasValue)
                                                 {
-                                                    <MudSelectItem T="string" Value="@option.Id">
-                                                        @option.Label
-                                                    </MudSelectItem>
+                                                    <MudTextField T="string" Label="Detalle de la prenda (opcional)" @bind-Value="prenda.Detalle"
+                                                                  Placeholder="Ej. negra con franjas blancas" Immediate="true" MaxLength="@ReportInput.TraitDetailMaxLength" Variant="Variant.Outlined" />
                                                 }
-                                            </MudSelect>
-                                        </MudItem>
-
-                                        <MudItem xs="12" md="6">
-                                            <MudSelect T="string"
-                                                       @bind-Value="_form.MarkTypeId"
-                                                          Label="Tipo de seña"
-                                                       Variant="Variant.Outlined"
-                                                       Clearable="true">
-                                                @foreach (var option in MarkTypeOptions)
+                                                <MudButton Class="align-self-start" Size="Size.Small" OnClick="@(() => input.Prendas.Remove(prenda))">Quitar prenda</MudButton>
+                                            </MudStack>
+                                        </MudPaper>
+                                    }
+                                    <MudButton Class="align-self-start" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add"
+                                               Disabled="@(catalog.TiposPrenda.Count == 0)" OnClick="@(() => input.Prendas.Add(new()))">Agregar prenda</MudButton>
+                                </MudStack>
+                                <MudStack Spacing="2">
+                                    <MudText Typo="Typo.subtitle1">Señas particulares</MudText>
+                                    @foreach (var sena in input.Senas)
+                                    {
+                                        <MudPaper @key="sena" Outlined="true" Class="pa-3">
+                                            <MudStack Spacing="2">
+                                                <ReportCatalogSelect Label="Tipo de seña particular" Options="catalog.TiposSena" @bind-Value="sena.TipoId" />
+                                                @if (sena.TipoId.HasValue)
                                                 {
-                                                    <MudSelectItem T="string" Value="@option.Id">
-                                                        @option.Label
-                                                    </MudSelectItem>
+                                                    <ReportCatalogSelect Label="Región corporal (opcional)" Options="catalog.RegionesCorporales" @bind-Value="sena.RegionId" />
+                                                    <MudTextField T="string" Label="Detalle de la seña (opcional)" @bind-Value="sena.Detalle"
+                                                                  Placeholder="Ej. tatuaje con diseño de rosa" Immediate="true" MaxLength="@ReportInput.TraitDetailMaxLength" Variant="Variant.Outlined" />
                                                 }
-                                            </MudSelect>
-                                        </MudItem>
-
-                                        <MudItem xs="12">
-                                            <MudTextField T="string"
-                                                          @bind-Value="_form.MarkDescription"
-                                                          Label="Descripción de la seña"
-                                                          Placeholder="Forma, tamaño, color o ubicación específica"
-                                                          Variant="Variant.Outlined"
-                                                          Lines="2" />
-                                        </MudItem>
-
-                                        <MudItem xs="12">
-                                            <MudButton Variant="Variant.Text"
-                                                       Color="Color.Primary"
-                                                       StartIcon="@Icons.Material.Outlined.Add"
-                                                       Disabled="true">
-                                                Añadir otra seña
-                                            </MudButton>
-                                        </MudItem>
-                                    </MudGrid>
+                                                <MudButton Class="align-self-start" Size="Size.Small" OnClick="@(() => input.Senas.Remove(sena))">Quitar seña</MudButton>
+                                            </MudStack>
+                                        </MudPaper>
+                                    }
+                                    <MudButton Class="align-self-start" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add"
+                                               Disabled="@(catalog.TiposSena.Count == 0)" OnClick="@(() => input.Senas.Add(new()))">Agregar seña</MudButton>
                                 </MudStack>
-                            </MudPaper>
-                            break;
+                                <OptionalReportFields Label="discapacidades" @bind-Added="hasDisabilities" OnRemove="@(() => input.DiscapacidadesIds = [])"
+                                                      Disabled="@(catalog.Discapacidades.Count == 0)">
+                                    <MudSelect T="Guid" Label="Discapacidades" Variant="Variant.Outlined" Clearable="true"
+                                               MultiSelection="true" @bind-SelectedValues="input.DiscapacidadesIds" ToStringFunc="DisabilityName">
+                                        @foreach (var disability in catalog.Discapacidades)
+                                        {
+                                            <MudSelectItem T="Guid" Value="disability.Id">@disability.Nombre</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </OptionalReportFields>
+                            </MudStack>
+                        </MudStep>
 
-                        case 2:
-                            @* HECHOS *@
-                            <MudPaper Outlined="true" Elevation="0" Class="pa-6">
-                                <MudStack Spacing="4">
-                                    <MudStack Spacing="1">
-                                        <MudText Typo="Typo.overline" Color="Color.Primary">
-                                            03 · Hechos
-                                        </MudText>
+                        <MudStep Title="Hechos">
+                            <MudStack Spacing="3" Class="py-4">
+                                <OptionalReportFields Label="circunstancia" @bind-Added="hasCircumstance" OnRemove="@(() => input.CircunstanciaId = null)" Disabled="@(catalog.Circunstancias.Count == 0)">
+                                    <ReportCatalogSelect Label="Circunstancia" Options="catalog.Circunstancias" @bind-Value="input.CircunstanciaId" />
+                                </OptionalReportFields>
+                                <OptionalReportFields Label="fechas u hora" @bind-Added="hasIncidentDates" OnRemove="ClearIncidentDates">
+                                    <MudGrid>
+                                        <MudItem xs="12" sm="4"><MudDatePicker Label="Fecha de los hechos" @bind-Date="input.FechaHechos" MaxDate="@DateTime.Today" DateFormat="dd/MM/yyyy" Variant="Variant.Outlined" Clearable="true" /></MudItem>
+                                        <MudItem xs="12" sm="4"><MudTimePicker Label="Hora de los hechos" @bind-Time="input.HoraHechos" Variant="Variant.Outlined" Clearable="true" /></MudItem>
+                                        <MudItem xs="12" sm="4"><MudDatePicker Label="Fecha en que se percató" @bind-Date="input.FechaDeteccion" MaxDate="@DateTime.Today" DateFormat="dd/MM/yyyy" Variant="Variant.Outlined" Clearable="true" /></MudItem>
+                                    </MudGrid>
+                                </OptionalReportFields>
+                                <MudTextField T="string" Label="Descripción de los hechos" @bind-Value="input.DescripcionHechos"
+                                              Immediate="true" Required="true" Lines="5" MaxLength="4000" Variant="Variant.Outlined" />
+                            </MudStack>
+                        </MudStep>
 
-                                        <MudText Typo="Typo.h5" HtmlTag="h2">
-                                            Hechos de la desaparición
-                                        </MudText>
-
-                                        <MudText Typo="Typo.body2">
-                                            Describe lo ocurrido y las fechas conocidas.
-                                        </MudText>
+                        <MudStep Title="Ubicación">
+                            <MudStack Spacing="3" Class="py-4">
+                                <OptionalReportFields Label="dirección o referencias" @bind-Added="hasAddress" OnRemove="ClearAddress">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+                                        <MudTextField T="string" Label="Código postal" Value="input.CodigoPostal"
+                                                      ValueChanged="PostalCodeChanged" Immediate="true" MaxLength="5"
+                                                      InputMode="InputMode.numeric" Variant="Variant.Outlined" />
+                                        <MudButton OnClick="FindPostalAsync" Variant="Variant.Outlined" Disabled="searchingPostal">Buscar en SEPOMEX</MudButton>
                                     </MudStack>
-
-                                    <MudGrid Spacing="3">
-                                        <MudItem xs="12">
-                                            <MudSelect T="string"
-                                                       @bind-Value="_form.CircumstanceId"
-                                                          Label="Circunstancia"
-                                                       Variant="Variant.Outlined"
-                                                       Clearable="true">
-                                                @foreach (var option in CircumstanceOptions)
-                                                {
-                                                    <MudSelectItem T="string" Value="@option.Id">
-                                                        @option.Label
-                                                    </MudSelectItem>
-                                                }
-                                            </MudSelect>
+                                    @if (postalMatches.Count > 0)
+                                    {
+                                        <MudSelect T="string" Label="Asentamiento en SEPOMEX" ValueChanged="SelectPostal" Variant="Variant.Outlined">
+                                            @foreach (var item in postalMatches)
+                                            {
+                                                <MudSelectItem T="string" Value="@item.Clave">@item.Asentamiento · @item.Municipio, @item.Estado</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    }
+                                    @if (postalNotice is not null)
+                                    {
+                                        <MudText Typo="Typo.body2">@postalNotice</MudText>
+                                    }
+                                    <MudGrid>
+                                        <MudItem xs="12" sm="6"><MudTextField T="string" Label="Estado" @bind-Value="input.Estado" MaxLength="120" Variant="Variant.Outlined" /></MudItem>
+                                        <MudItem xs="12" sm="6"><MudTextField T="string" Label="Municipio" @bind-Value="input.Municipio" MaxLength="120" Variant="Variant.Outlined" /></MudItem>
+                                        <MudItem xs="12" sm="6"><MudTextField T="string" Label="Colonia o asentamiento" @bind-Value="input.Asentamiento" MaxLength="160" Variant="Variant.Outlined" /></MudItem>
+                                        <MudItem xs="12" sm="6"><MudTextField T="string" Label="Calle" @bind-Value="input.Calle" MaxLength="200" Variant="Variant.Outlined" /></MudItem>
+                                    </MudGrid>
+                                    <MudTextField T="string" Label="Referencias del lugar" @bind-Value="input.Referencias"
+                                                  Lines="3" MaxLength="1000" Variant="Variant.Outlined" />
+                                </OptionalReportFields>
+                                <OptionalReportFields Label="punto en el mapa" @bind-Added="hasMapPoint" OnRemove="ClearCoordinates">
+                                    <MudText Typo="Typo.body2">Haz clic en el lugar de los hechos o escribe las coordenadas.</MudText>
+                                    <ReportLocationMap Label="Selecciona el lugar de los hechos"
+                                                       Points="locationPins" OnSelect="SelectCoordinates" />
+                                    <MudGrid>
+                                        <MudItem xs="12" sm="6">
+                                            <MudNumericField T="double?" Label="Latitud" Value="input.Latitud" ValueChanged="SetLatitude"
+                                                             Min="@(-90d)" Max="@(90d)" Step=".000001" HideSpinButtons="true" Variant="Variant.Outlined" />
                                         </MudItem>
-
-                                        <MudItem xs="12" md="6">
-                                            <MudDatePicker @bind-Date="_form.EventDate"
-                                                          Label="Fecha de los hechos"
-                                                           Variant="Variant.Outlined"
-                                                           DateFormat="dd/MM/yyyy"
-                                                           Editable="true" />
-                                        </MudItem>
-
-                                        <MudItem xs="12" md="6">
-                                            <MudTimePicker @bind-Time="_form.EventTime"
-                                                           Label="Hora de los hechos"
-                                                           Variant="Variant.Outlined"
-                                                           AmPm="false" />
-                                        </MudItem>
-
-                                        <MudItem xs="12" md="6">
-                                            <MudDatePicker @bind-Date="_form.AwarenessDate"
-                                                          Label="Fecha en que se percató"
-                                                           Variant="Variant.Outlined"
-                                                           DateFormat="dd/MM/yyyy"
-                                                           Editable="true" />
-                                        </MudItem>
-
-                                        <MudItem xs="12">
-                                            <MudTextField T="string"
-                                                          @bind-Value="_form.FactsDescription"
-                                                          Label="Descripción de los hechos"
-                                                          Placeholder="Qué ocurrió, dónde fue vista y otra información conocida"
-                                                          Variant="Variant.Outlined"
-                                                          Lines="5" />
+                                        <MudItem xs="12" sm="6">
+                                            <MudNumericField T="double?" Label="Longitud" Value="input.Longitud" ValueChanged="SetLongitude"
+                                                             Min="@(-180d)" Max="@(180d)" Step=".000001" HideSpinButtons="true" Variant="Variant.Outlined" />
                                         </MudItem>
                                     </MudGrid>
-                                </MudStack>
-                            </MudPaper>
-                            break;
+                                </OptionalReportFields>
+                            </MudStack>
+                        </MudStep>
 
-                        case 3:
-                            @* UBICACIÓN *@
-                            <MudPaper Outlined="true" Elevation="0" Class="pa-6">
-                                <MudStack Spacing="4">
+                        <MudStep Title="Datos adicionales">
+                            <MudStack Spacing="3" Class="py-4">
+                                <MudPaper Outlined="true" Class="pa-3">
                                     <MudStack Spacing="1">
-                                        <MudText Typo="Typo.overline" Color="Color.Primary">
-                                            04 · Ubicación
-                                        </MudText>
-
-                                        <MudText Typo="Typo.h5" HtmlTag="h2">
-                                            Ubicación de los hechos
-                                        </MudText>
-
-                                        <MudText Typo="Typo.body2">
-                                            Indica el lugar relacionado con la desaparición.
-                                        </MudText>
+                                        <MudText Typo="Typo.subtitle1" HtmlTag="h2">Quién reporta</MudText>
+                                        <MudText Typo="Typo.body2">Estos datos se toman de tu perfil.</MudText>
+                                        <MudText><strong>Nombre completo:</strong> @JoinKnown(" ", account.NombreCompleto)</MudText>
+                                        <MudText><strong>Correo:</strong> @JoinKnown(" ", account.Correo)</MudText>
+                                        <MudText><strong>Teléfono:</strong> @JoinKnown(" ", account.Telefono)</MudText>
                                     </MudStack>
-
-                                    <MudGrid Spacing="3">
-                                        <MudItem xs="12" md="4">
-                                            <MudTextField T="string"
-                                                          @bind-Value="_form.PostalCode"
-                                                          Label="Código postal"
-                                                          MaxLength="5"
-                                                          Variant="Variant.Outlined" />
+                                </MudPaper>
+                                <OptionalReportFields Label="tu vínculo con la persona reportada" @bind-Added="hasReporterRelationship" OnRemove="@(() => input.ParentescoReportanteId = null)" Disabled="@(catalog.Parentescos.Count == 0)">
+                                    <ReportCatalogSelect Label="Tu vínculo con la persona reportada (opcional)"
+                                                         Options="catalog.Parentescos" @bind-Value="input.ParentescoReportanteId" />
+                                </OptionalReportFields>
+                                <OptionalReportFields Label="vehículo relacionado" @bind-Added="hasVehicle" OnRemove="ClearVehicle">
+                                    <MudGrid>
+                                        <MudItem xs="12" sm="6"><MudTextField T="string" Label="Marca" @bind-Value="input.MarcaVehiculo" MaxLength="120" Variant="Variant.Outlined" /></MudItem>
+                                        <MudItem xs="12" sm="6"><MudTextField T="string" Label="Modelo" @bind-Value="input.ModeloVehiculo" MaxLength="120" Variant="Variant.Outlined" /></MudItem>
+                                        <MudItem xs="12" sm="6"><MudNumericField T="int?" Label="Año" @bind-Value="input.AnoVehiculo"
+                                                                                   HideSpinButtons="true" Format="0" Variant="Variant.Outlined" /></MudItem>
+                                        <MudItem xs="12" sm="6">
+                                            <MudAutocomplete T="ReportCatalogOption" Label="Color del vehículo" Value="vehicleColor" ValueChanged="SelectVehicleColor"
+                                                             SearchFunc="SearchVehicleColors" ToStringFunc="@(color => color?.Nombre)"
+                                                             Variant="Variant.Outlined" Clearable="true" ResetValueOnEmptyText="true"
+                                                             Strict="false" Disabled="@(catalog.Colores.Count == 0)">
+                                                <ItemTemplate Context="color">
+                                                    @if (ReportDetails.ValidHex(color.ColorHex) is { } hex)
+                                                    {
+                                                        <span class="vehicle-color-swatch" style="@($"background-color: {hex}")" aria-hidden="true"></span>
+                                                    }
+                                                    @color.Nombre
+                                                </ItemTemplate>
+                                                <NoItemsTemplate>
+                                                    <MudText Class="px-4 py-2">No hay colores con ese nombre.</MudText>
+                                                </NoItemsTemplate>
+                                            </MudAutocomplete>
                                         </MudItem>
-
-                                        <MudItem xs="12" md="4">
-                                            <MudSelect T="string"
-                                                       @bind-Value="_form.StateId"
-                                                          Label="Estado"
-                                                       Variant="Variant.Outlined">
-                                                <MudSelectItem T="string" Value="@("tlaxcala")">
-                                                    Tlaxcala
-                                                </MudSelectItem>
-                                            </MudSelect>
-                                        </MudItem>
-
-                                        <MudItem xs="12" md="4">
-                                            <MudSelect T="string"
-                                                       @bind-Value="_form.MunicipalityId"
-                                                          Label="Municipio"
-                                                       Variant="Variant.Outlined"
-                                                       Clearable="true">
-                                                @foreach (var option in MunicipalityOptions)
-                                                {
-                                                    <MudSelectItem T="string" Value="@option.Id">
-                                                        @option.Label
-                                                    </MudSelectItem>
-                                                }
-                                            </MudSelect>
-                                        </MudItem>
-
-                                        <MudItem xs="12" md="6">
-                                            <MudSelect T="string"
-                                                       @bind-Value="_form.SettlementId"
-                                                          Label="Colonia o asentamiento"
-                                                       Variant="Variant.Outlined"
-                                                       Clearable="true">
-                                                <MudSelectItem T="string" Value="@("colonia-demo-1")">
-                                                    Centro · Ejemplo
-                                                </MudSelectItem>
-                                            </MudSelect>
-                                        </MudItem>
-
-                                        <MudItem xs="12" md="6">
-                                            <MudTextField T="string"
-                                                          @bind-Value="_form.Street"
-                                                          Label="Calle"
-                                                          Variant="Variant.Outlined" />
-                                        </MudItem>
-
-                                        <MudItem xs="12">
-                                            <MudTextField T="string"
-                                                          @bind-Value="_form.LocationReferences"
-                                                          Label="Referencias del lugar"
-                                                          Variant="Variant.Outlined"
-                                                          Lines="2" />
-                                        </MudItem>
+                                        <MudItem xs="12" sm="6"><MudTextField T="string" Label="Número de placa" @bind-Value="input.PlacaVehiculo" MaxLength="30" Variant="Variant.Outlined" /></MudItem>
                                     </MudGrid>
+                                </OptionalReportFields>
+                                <OptionalReportFields Label="persona involucrada" @bind-Added="hasInvolvedPerson" OnRemove="ClearInvolvedPerson">
+                                    <MudTextField T="string" Label="Nombre" @bind-Value="input.NombrePersonaRelacionada" MaxLength="160" Variant="Variant.Outlined" />
+                                    <ReportCatalogSelect Label="Vínculo de la persona involucrada con la persona reportada (opcional)"
+                                                         Options="catalog.Parentescos" @bind-Value="input.ParentescoPersonaRelacionadaId" />
+                                    <MudTextField T="string" Label="Descripción de la persona o su participación" @bind-Value="input.DescripcionPersonaRelacionada"
+                                                  Lines="3" MaxLength="1000" Variant="Variant.Outlined" />
+                                </OptionalReportFields>
+                            </MudStack>
+                        </MudStep>
 
-                                    <MudPaper Outlined="true" Elevation="0" Class="pa-8">
-                                        <MudStack AlignItems="AlignItems.Center" Spacing="2">
-                                            <MudIcon Icon="@Icons.Material.Outlined.LocationOn"
-                                                     Color="Color.Primary"
-                                                     Size="Size.Large" />
-
-                                            <MudText Typo="Typo.subtitle1">
-                                                Ubicación en el mapa
-                                            </MudText>
-
-                                            <MudText Typo="Typo.body2" Align="Align.Center">
-                                                Área reservada para seleccionar el punto.
-                                            </MudText>
-
-                                            <MudText Typo="Typo.caption">
-                                                Mapa no conectado en este mock.
-                                            </MudText>
-                                        </MudStack>
-                                    </MudPaper>
-                                </MudStack>
-                            </MudPaper>
-                            break;
-
-                        case 4:
-                            @* INFORMACIÓN ADICIONAL *@
-                            <MudPaper Outlined="true" Elevation="0" Class="pa-6">
-                                <MudStack Spacing="4">
-                                    <MudStack Spacing="1">
-                                        <MudText Typo="Typo.overline" Color="Color.Primary">
-                                            05 · Información adicional
-                                        </MudText>
-
-                                        <MudText Typo="Typo.h5" HtmlTag="h2">
-                                            Vehículo y persona involucrada
-                                        </MudText>
-
-                                        <MudText Typo="Typo.body2">
-                                            Completa estos datos únicamente si conoces información.
-                                        </MudText>
-                                    </MudStack>
-
-                                    <MudText Typo="Typo.h6" HtmlTag="h3">
-                                        Vehículo involucrado
-                                    </MudText>
-
-                                    <MudGrid Spacing="3">
-                                        <MudItem xs="12" md="6">
-                                            <MudTextField T="string" @bind-Value="_form.VehicleBrand"
-                                                          Label="Marca"
-                                                          Variant="Variant.Outlined" />
-                                        </MudItem>
-
-                                        <MudItem xs="12" md="6">
-                                            <MudTextField T="string" @bind-Value="_form.VehicleModel"
-                                                          Label="Modelo"
-                                                          Variant="Variant.Outlined" />
-                                        </MudItem>
-
-                                        <MudItem xs="12" md="6">
-                                            <MudTextField T="string" @bind-Value="_form.VehicleColor"
-                                                          Label="Color"
-                                                          Variant="Variant.Outlined" />
-                                        </MudItem>
-
-                                        <MudItem xs="12" md="6">
-                                            <MudTextField T="string" @bind-Value="_form.VehiclePlate"
-                                                          Label="Número de placa"
-                                                          Variant="Variant.Outlined" />
-                                        </MudItem>
-                                    </MudGrid>
-
-                                    <MudDivider />
-
-                                    <MudText Typo="Typo.h6" HtmlTag="h3">
-                                        Persona involucrada
-                                    </MudText>
-
-                                    <MudTextField T="string"
-                                                  @bind-Value="_form.InvolvedPersonName"
-                                                          Label="Nombre"
-                                                  Variant="Variant.Outlined" />
-
-                                    <MudTextField T="string"
-                                                  @bind-Value="_form.InvolvedPersonDescription"
-                                                          Label="Descripción"
-                                                  Variant="Variant.Outlined"
-                                                  Lines="3" />
-                                </MudStack>
-                            </MudPaper>
-                            break;
-
-                        case 5:
-                            @* PRIVACIDAD Y PUBLICACIÓN *@
-                            <MudPaper Outlined="true" Elevation="0" Class="pa-6">
-                                <MudStack Spacing="4">
-                                    <MudStack Spacing="1">
-                                        <MudText Typo="Typo.overline" Color="Color.Primary">
-                                            06 · Publicación
-                                        </MudText>
-
-                                        <MudText Typo="Typo.h5" HtmlTag="h2">
-                                            Privacidad y publicación
-                                        </MudText>
-
-                                        <MudText Typo="Typo.body2">
-                                            Indica tu decisión sobre la publicación de la ficha
-                                            y la visibilidad de tu identidad.
-                                        </MudText>
-                                    </MudStack>
-
-                                    <MudGrid Spacing="3">
-                                        <MudItem xs="12" md="6">
-                                            <MudSelect T="bool?"
-                                                       @bind-Value="_form.AuthorizePublication"
-                                                       Label="Autorización para publicar la ficha"
-                                                       Variant="Variant.Outlined"
-                                                       Clearable="true">
-
-                                                <MudSelectItem T="bool?" Value="@((bool?)true)">
-                                                    Sí autorizo
-                                                </MudSelectItem>
-
-                                                <MudSelectItem T="bool?" Value="@((bool?)false)">
-                                                    No autorizo
-                                                </MudSelectItem>
-
-                                            </MudSelect>
-                                        </MudItem>
-
-                                        <MudItem xs="12" md="6">
-                                            <MudSelect T="bool?"
-                                                       @bind-Value="_form.KeepIdentityPrivate"
-                                                       Label="Mantener anónima mi identidad al público"
-                                                       Variant="Variant.Outlined"
-                                                       Clearable="true">
-
-                                                <MudSelectItem T="bool?" Value="@((bool?)true)">
-                                                    Sí
-                                                </MudSelectItem>
-
-                                                <MudSelectItem T="bool?" Value="@((bool?)false)">
-                                                    No
-                                                </MudSelectItem>
-
-                                            </MudSelect>
-                                        </MudItem>
-                                    </MudGrid>
-
-                                    <MudAlert Severity="Severity.Info"
-                                              Variant="Variant.Text"
-                                              Dense="true">
-                                        No autorizar la publicación no impide presentar el reporte.
-                                        La información de contacto no se muestra en la ficha pública.
-                                    </MudAlert>
-                                </MudStack>
-                            </MudPaper>
-                            break;
-
-                    }
-
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                        <MudButton Variant="Variant.Outlined"
-                                   Color="Color.Primary"
-                                   ButtonType="ButtonType.Button"
-                                   StartIcon="@Icons.Material.Filled.ArrowBack"
-                                   Disabled="@(_activeStep <= 0)"
-                                   OnClick="GoToPreviousStepAsync">
-                            Anterior
-                        </MudButton>
-                        <MudSpacer />
-                        @if (_activeStep < 5)
-                        {
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       ButtonType="ButtonType.Button"
-                                       EndIcon="@Icons.Material.Filled.ArrowForward"
-                                       OnClick="GoToNextStepAsync">
-                                Continuar
-                            </MudButton>
-                        }
-                        else
-                        {
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       ButtonType="ButtonType.Button"
-                                       EndIcon="@Icons.Material.Filled.Send"
-                                       Disabled="true">
-                                Enviar reporte
-                            </MudButton>
-                        }
-                    </MudStack>
-                    <MudText Typo="Typo.caption">
-                        Prototipo de captura. No se guarda ni se envía información.
-                    </MudText>
-                </MudStack>
-            </MudItem>
-        </MudGrid>
+                        <MudStep Title="Revisión">
+                            <MudStack Spacing="3" Class="py-4">
+                                <MudText><strong>Persona reportada:</strong> @ReviewName</MudText>
+                                <MudText><strong>Quién reporta:</strong> @JoinKnown(" · ", account.NombreCompleto, account.Correo, account.Telefono)</MudText>
+                                @if (input.EstaturaCm is { } height)
+                                {
+                                    <MudText><strong>Estatura</strong> @height cm</MudText>
+                                }
+                                @if (catalog.Complexiones.FirstOrDefault(option => option.Id == input.ComplexionId) is { } complexion)
+                                {
+                                    <MudText><strong>Complexión</strong> @complexion.Nombre</MudText>
+                                }
+                                @if (reviewPhysicalTraits is { } traits)
+                                {
+                                    <MudText Style="white-space: pre-wrap"><strong>Rasgos físicos y vestimenta</strong><br />@traits</MudText>
+                                }
+                                <MudText><strong>Hechos:</strong> @input.DescripcionHechos</MudText>
+                                <MudText><strong>Ubicación:</strong> @ReviewLocation</MudText>
+                                @if (input.Latitud is { } lat && input.Longitud is { } lng)
+                                {
+                                    <MudText><strong>Coordenadas:</strong> @lat.ToString("F6"), @lng.ToString("F6")</MudText>
+                                }
+                                @if (catalog.Parentescos.FirstOrDefault(option => option.Id == input.ParentescoReportanteId) is { } reporterRelationship)
+                                {
+                                    <MudText><strong>Vínculo de quien reporta</strong> @reporterRelationship.Nombre</MudText>
+                                }
+                                @if (catalog.Parentescos.FirstOrDefault(option => option.Id == input.ParentescoPersonaRelacionadaId) is { } involvedRelationship)
+                                {
+                                    <MudText><strong>Vínculo de la persona involucrada</strong> @involvedRelationship.Nombre</MudText>
+                                }
+                                @if (reviewVehicle is { } vehicle)
+                                {
+                                    <MudText><strong>Vehículo</strong> @vehicle</MudText>
+                                }
+                                <MudCheckBox T="bool" @bind-Value="input.AutorizaPublicacion" Label="Autorizo la publicación de la ficha tras la revisión" />
+                                <MudCheckBox T="bool" @bind-Value="input.MantenerAnonimato" Label="Mantener anónima mi identidad al público" />
+                            </MudStack>
+                        </MudStep>
+                    </ChildContent>
+                    <ActionContent Context="stepper">
+                        <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                            <MudButton Disabled="@(activeStep == 0 || saving)" OnClick="() => stepper.PreviousStepAsync()">Atrás</MudButton>
+                            <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(saving || searchingPostal)"
+                                       OnClick="() => stepper.NextStepAsync()">@(activeStep == ReviewStep ? "Guardar reporte" : "Continuar")</MudButton>
+                        </MudStack>
+                    </ActionContent>
+                </MudStepper>
+            </MudPaper>
+        }
+        else
+        {
+            <MudButton OnClick="LoadCatalogsAsync" Variant="Variant.Outlined">Volver a cargar el formulario</MudButton>
+        }
     </MudStack>
 </MudContainer>

@@ -12,14 +12,10 @@ internal sealed class RegionCorporalDocument
 
     [BsonElement("region")] 
     public string Region { get; set; } = "";
-    [BsonElement("orden")] 
-    public int Orden { get; set; }
-    [BsonElement("version")] 
-    public string Version { get; set; } = "";
     [BsonElement("actualizadoEnUtc")] 
     public DateTime ActualizadoEnUtc { get; set; }
     [BsonElement("actualizadoPor")] 
     public string ActualizadoPor { get; set; } =  "";
     
-    public RegionCorporalRow ToRow() => new RegionCorporalRow(Id, Region, Orden, Version);
+    public RegionCorporalRow ToRow() => new RegionCorporalRow(Id, Region);
 }

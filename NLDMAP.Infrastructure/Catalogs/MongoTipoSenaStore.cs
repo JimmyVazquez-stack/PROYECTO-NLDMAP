@@ -36,8 +36,7 @@ public sealed class MongoTipoSenaStore : ITipoSenaStore
         var page = Math.Clamp(query.Page, 1, totalPages);
 
         var documents = await collection.Find(filter)
-            .SortBy(document => document.Orden)
-            .ThenBy(document => document.Nombre)
+            .SortBy(document => document.Nombre)
             .ThenBy(document => document.Id)
             .Skip((page - 1) * PageSize)
             .Limit(PageSize)
@@ -61,8 +60,6 @@ public sealed class MongoTipoSenaStore : ITipoSenaStore
         {
             Id = tipoSena.Id,
             Nombre = tipoSena.Nombre,
-            Orden = tipoSena.Orden,
-            Version = Guid.NewGuid().ToString("N"),
             ActualizadoEnUtc = DateTime.UtcNow,
             ActualizadoPor = actorId
         };
@@ -71,24 +68,31 @@ public sealed class MongoTipoSenaStore : ITipoSenaStore
     }
 
     public async Task UpdateAsync(
-        TipoSena tipoSena, string expectedVersion, string actorId)
+        TipoSena tipoSena, string actorId)
     {
         var filter = Builders<TipoSenaDocument>.Filter.Where(document =>
-            document.Id == tipoSena.Id && document.Version == expectedVersion);
+            document.Id == tipoSena.Id);
 
         var update = Builders<TipoSenaDocument>.Update
             .Set(document => document.Nombre, tipoSena.Nombre)
-            .Set(document => document.Orden, tipoSena.Orden)
-            .Set(document => document.Version, Guid.NewGuid().ToString("N"))
             .Set(document => document.ActualizadoEnUtc, DateTime.UtcNow)
-            .Set(document => document.ActualizadoPor, actorId);
+            .Set(document => document.ActualizadoPor, actorId)
+            .Unset("orden")
+            .Unset("version");
 
         var result = await collection.UpdateOneAsync(filter, update);
 
         if (result.MatchedCount == 0)
         {
             throw new AdministrationException(
-                "El tipo de seña cambió o ya no existe. Actualiza el catálogo y vuelve a intentarlo.");
+                "El tipo de seña ya no existe. Actualiza el catálogo y vuelve a intentarlo.");
         }
+    }
+
+    public async Task DeleteAsync(Guid id)
+    {
+        var result = await collection.DeleteOneAsync(document => document.Id == id);
+        if (result.DeletedCount == 0)
+            throw new AdministrationException("La opción ya no existe. Actualiza el catálogo.");
     }
 }

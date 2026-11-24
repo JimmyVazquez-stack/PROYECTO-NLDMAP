@@ -67,12 +67,6 @@
                                   For="() => editing.Region"
                                   Disabled="Busy" />
 
-                    <MudNumericField T="int" Label="Orden de presentación"
-                                     Variant="Variant.Outlined"
-                                     @bind-Value="editing.Orden"
-                                     For="() => editing.Orden"
-                                     Min="0" Max="9999" Disabled="Busy" />
-
                     <MudStack Row="true" Spacing="2">
                         <MudButton ButtonType="ButtonType.Submit" Color="Color.Primary"
                                    Variant="Variant.Filled" Disabled="Busy">
@@ -103,7 +97,6 @@
                   Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
             <HeaderContent>
                 <MudTh>Región</MudTh>
-                <MudTh>Orden</MudTh>
                 @if (CanManage)
                 {
                     <MudTh>Acciones</MudTh>
@@ -112,7 +105,6 @@
 
             <RowTemplate>
                 <MudTd DataLabel="Región">@context.Region</MudTd>
-                <MudTd DataLabel="Orden">@context.Orden</MudTd>
                 @if (CanManage)
                 {
                     <MudTd DataLabel="Acciones">
@@ -120,6 +112,8 @@
                                    Size="Size.Small" Disabled="Busy">
                             Editar
                         </MudButton>
+                        <EliminarOpcion @key="context.Id" Nombre="@context.Region" Busy="Busy"
+                                        OnConfirm="() => DeleteAsync(context.Id)" />
                     </MudTd>
                 }
             </RowTemplate>

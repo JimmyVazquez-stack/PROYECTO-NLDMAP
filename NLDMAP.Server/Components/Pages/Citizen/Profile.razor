@@ -5,7 +5,6 @@
 @using NLDMAP.Application.Accounts
 @inject ICitizenAccounts Accounts
 @inject ICurrentActor CurrentActor
-@inject IConfiguration Configuration
 
 <PageTitle>Mi perfil | Búsqueda Tlaxcala</PageTitle>
 
@@ -29,16 +28,9 @@
         @if (profile.CanCreateReports)
         {
             <MudAlert Severity="Severity.Success">Tu perfil está completo.</MudAlert>
-            @if (Configuration.GetValue<bool>("Reports:ShowPrototype"))
-            {
-                <MudButton Href="/reportes/crear" Variant="Variant.Filled" Color="Color.Primary">
-                    Ver prototipo de reportes
-                </MudButton>
-            }
-            else
-            {
-                <MudText Typo="Typo.body2">El formulario de reportes aún no está disponible.</MudText>
-            }
+            <MudButton Href="/reportes/crear" Variant="Variant.Filled" Color="Color.Primary">
+                Crear reporte nuevo
+            </MudButton>
         }
         else
         {
