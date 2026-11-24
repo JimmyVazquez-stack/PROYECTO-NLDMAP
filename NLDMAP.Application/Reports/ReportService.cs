@@ -79,6 +79,12 @@ public sealed class ReportService(ICurrentActor currentActor, ReportAccess acces
         return report.Id;
     }
 
+    public async Task<IReadOnlyList<AnalysisReport>> GetAnalysisAsync(bool includeLocalExamples)
+    {
+        await access.RequireAnalysisAsync(await currentActor.GetAsync());
+        return await store.GetAnalysisAsync(includeLocalExamples);
+    }
+
     public Task<IReadOnlyList<ReportMapPoint>> GetPublicMapAsync() =>
         store.GetMapAsync(publicOnly: true, authorId: null);
 

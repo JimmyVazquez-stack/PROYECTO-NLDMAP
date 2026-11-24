@@ -141,6 +141,17 @@ internal static class ReportDocument
         };
     }
 
+    internal static NLDMAP.Application.Reports.AnalysisReport ReadAnalysis(BsonDocument row)
+    {
+        var location = Section(row, "ubicacion");
+        var catalogs = Section(row, "catalogos");
+        var date = Date(Section(row, "hechos"), "fechaHechos");
+        return new(Text(row, "folioInterno") ?? ReadIdentifier(row, "_id"),
+            date is { } value ? DateOnly.FromDateTime(value) : null,
+            Text(catalogs, "municipio") ?? Text(location, "municipio"), Text(catalogs, "circunstancia"),
+            ReadCoordinates(location));
+    }
+
     internal static CoordenadasReporte? ReadCoordinates(BsonDocument location)
     {
         var point = Section(location, "coordenadas");

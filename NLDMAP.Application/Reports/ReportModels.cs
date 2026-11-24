@@ -84,5 +84,8 @@ public sealed record ReportCatalogOptions(
     IReadOnlyList<ReportCatalogOption> Discapacidades,
     IReadOnlyList<ReportCatalogOption> Complexiones);
 
+public sealed record AnalysisReport(string Folio, DateOnly? FechaHechos, string? Municipio,
+    string? Circunstancia, NLDMAP.Domain.Reports.CoordenadasReporte? Coordenadas);
+
 public sealed record ReportMapPoint(double Latitud, double Longitud, string? Municipio, string? Estado,
     string? Nombre = null);

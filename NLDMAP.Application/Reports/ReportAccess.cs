@@ -37,6 +37,12 @@ public sealed class ReportAccess(IAdministrationStore administration, ICitizenAc
         return (false, profile?.CanCreateReports == true ? profile : null);
     }
 
+    internal async Task RequireAnalysisAsync(ActorSession actor)
+    {
+        var staff = await administration.GetAccessAsync(actor);
+        AdministrationRules.RequirePermission(staff, PermissionNames.ReportsAnalyze);
+    }
+
     internal async Task RequireReadAsync(ActorSession actor, bool all)
     {
         if (all)

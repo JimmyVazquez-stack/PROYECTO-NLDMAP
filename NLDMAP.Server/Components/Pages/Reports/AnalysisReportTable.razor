@@ -1,0 +1,26 @@
+@using NLDMAP.Application.Reports
+
+<MudTable T="AnalysisReport" Items="Items" Breakpoint="Breakpoint.Sm" RowsPerPage="10" Dense="true" Hover="true" Elevation="0">
+    <HeaderContent>
+        <MudTh>Folio</MudTh>
+        <MudTh>Fecha de los hechos</MudTh>
+        <MudTh>Municipio</MudTh>
+        <MudTh>Circunstancia</MudTh>
+        <MudTh>Ubicación</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Folio">@context.Folio</MudTd>
+        <MudTd DataLabel="Fecha de los hechos">@(context.FechaHechos?.ToString("dd/MM/yyyy") ?? "Sin fecha")</MudTd>
+        <MudTd DataLabel="Municipio">@(context.Municipio ?? "Sin municipio")</MudTd>
+        <MudTd DataLabel="Circunstancia">@(context.Circunstancia ?? "Sin circunstancia")</MudTd>
+        <MudTd DataLabel="Ubicación">@(context.Coordenadas is null ? "Sin ubicación suficiente" : "Representable")</MudTd>
+    </RowTemplate>
+    <NoRecordsContent>No hay reportes para esta consulta.</NoRecordsContent>
+    <PagerContent>
+        <MudTablePager RowsPerPageString="Reportes por página" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<AnalysisReport> Items { get; set; } = [];
+}

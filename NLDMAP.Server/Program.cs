@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using NLDMAP.Infrastructure;
 using NLDMAP.Infrastructure.Identity;
 using NLDMAP.Infrastructure.Catalogs;
+using NLDMAP.Infrastructure.Graph;
 using NLDMAP.Infrastructure.Persistence;
 using NLDMAP.Server.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -19,7 +20,9 @@ using Microsoft.AspNetCore.HttpOverrides;
 using System.Net;
 
 
-var builder = WebApplication.CreateBuilder(args);
+const string syncReportsFlag = "--sync-reportes-neo4j";
+var syncReports = args.Contains(syncReportsFlag, StringComparer.Ordinal);
+var builder = WebApplication.CreateBuilder(args.Where(arg => arg != syncReportsFlag).ToArray());
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -42,6 +45,11 @@ builder.Services.AddControllers();
 
 // Se registran los servicios de identity y persistencia de datos
 builder.Services.AddInfrastructure(builder.Configuration);
+if (syncReports)
+{
+    builder.Services.AddNeo4J(builder.Configuration);
+    builder.Services.AddScoped<ReportGraphSync>();
+}
 
 // El servicio de autenticación se configura para usar cookies y el esquema de identidad predeterminado
 var authentication = builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme);
@@ -128,7 +136,15 @@ builder.Services.AddMemoryCache();
 
 builder.Services.AddScoped<AdministrationAccessCache>();
 
-var app = builder.Build();
+await using var app = builder.Build();
+
+if (syncReports)
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var count = await scope.ServiceProvider.GetRequiredService<ReportGraphSync>().RunAsync();
+    app.Logger.LogInformation("Reportes sincronizados con Neo4j: {Count}", count);
+    return;
+}
 
 if (app.Configuration.GetValue<bool>("SeedCatalogs"))
 {

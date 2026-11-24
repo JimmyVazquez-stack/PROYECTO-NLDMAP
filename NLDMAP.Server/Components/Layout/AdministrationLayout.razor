@@ -196,6 +196,12 @@
                     </MudNavLink>
                 </AuthorizeView>
 
+                <AuthorizeView Policy="@PermissionNames.ReportsAnalyze">
+                    <MudNavGroup Title="Análisis" Icon="@Icons.Material.Outlined.Insights">
+                        <MudNavLink Href="/admin/analisis/reportes">Reportes para análisis</MudNavLink>
+                    </MudNavGroup>
+                </AuthorizeView>
+
                 @* Usuarios *@
                 <AuthorizeView Policy="@PermissionNames.UsersRead">
 

@@ -4,6 +4,7 @@ public static class PermissionNames
 {
     public const string ClaimType = "permission";
     public const string Access = "Administration.Access";
+    public const string ReportsAnalyze = "Reports.Analyze";
     public const string ReportsRead = "Reports.Read";
     public const string ReportsCreate = "Reports.Create"; // Permiso público, fuera del catálogo administrativo.
     public const string UsersRead = "Users.Read";
@@ -20,6 +21,7 @@ public static class PermissionNames
     public static readonly IReadOnlyDictionary<string, string> Catalog =
         new Dictionary<string, string>
         {
+            [ReportsAnalyze] = "Consultar reportes para análisis",
             [ReportsRead] = "Consultar reportes",
             [UsersRead] = "Consultar usuarios", [UsersEdit] = "Editar perfiles",
             [UsersStatus] = "Activar y desactivar cuentas", [RolesRead] = "Consultar roles",

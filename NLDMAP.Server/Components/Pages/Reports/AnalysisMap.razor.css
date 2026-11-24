@@ -1,0 +1,32 @@
+.analysis-map {
+    min-height: 420px;
+    background: var(--mud-palette-background);
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: 8px;
+    isolation: isolate;
+}
+
+.analysis-map ::deep .analysis-point {
+    background: #126c61;
+    border: 2px solid white;
+    border-radius: 50%;
+}
+
+.analysis-map ::deep .analysis-heat {
+    position: absolute;
+    inset: 0;
+    z-index: 450;
+    pointer-events: none;
+}
+
+.analysis-map ::deep .report-map-cluster {
+    display: grid;
+    place-items: center;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: #126c61;
+    color: #fff;
+    font-size: .85rem;
+    font-weight: 750;
+    box-shadow: 0 1px 5px #0005;
+}

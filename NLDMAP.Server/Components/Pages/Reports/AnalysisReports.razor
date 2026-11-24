@@ -1,0 +1,196 @@
+@page "/admin/analisis/reportes"
+@layout AdministrationLayout
+@attribute [Authorize(Policy = PermissionNames.ReportsAnalyze)]
+@using NLDMAP.Application.Reports
+@using Microsoft.Extensions.Hosting
+@inject ReportService Reports
+@inject IHostEnvironment Environment
+@inject ILogger<AnalysisReports> Logger
+
+<PageTitle>Reportes para análisis | NLDMAP</PageTitle>
+
+<MudStack Spacing="3">
+    <MudText Typo="Typo.h4" HtmlTag="h1">Reportes para análisis</MudText>
+    @if (Environment.IsDevelopment())
+    {
+        <MudCheckBox T="bool" Value="includeExamples" ValueChanged="LoadExamplesAsync" Label="Incluir reportes ficticios locales" />
+    }
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" aria-label="Cargando reportes" />
+    }
+    else if (error)
+    {
+        <MudAlert Severity="Severity.Error">No se pudieron consultar los reportes.</MudAlert>
+        <MudButton OnClick="LoadAsync">Reintentar</MudButton>
+    }
+    else
+    {
+        <div class="analysis-filters">
+            <MudDatePicker Label="Fecha de los hechos desde" Date="from" DateChanged="value => SetFilter(() => from = value)" Clearable="true" />
+            <MudDatePicker Label="Fecha de los hechos hasta" Date="to" DateChanged="value => SetFilter(() => to = value)" Clearable="true" MinDate="from" />
+            <MudSelect T="string" Label="Municipio" Value="municipality" ValueChanged="value => SetFilter(() => municipality = value)" Clearable="true">
+                @foreach (var item in Options(report => report.Municipio))
+                {
+                    <MudSelectItem T="string" Value="@item">@item</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="string" Label="Circunstancia" Value="circumstance" ValueChanged="value => SetFilter(() => circumstance = value)" Clearable="true">
+                @foreach (var item in Options(report => report.Circunstancia))
+                {
+                    <MudSelectItem T="string" Value="@item">@item</MudSelectItem>
+                }
+            </MudSelect>
+        </div>
+        <div class="analysis-coverage" aria-live="polite">
+            <span><strong>@visible.Length</strong> reportes consultados</span>
+            <span><strong>@mappedCount</strong> con ubicación representable</span>
+            <span><strong>@(visible.Length - mappedCount)</strong> sin ubicación suficiente</span>
+        </div>
+        <MudTabs>
+            <MudTabPanel Text="Listado">
+                <AnalysisReportTable Items="visible" />
+            </MudTabPanel>
+            <MudTabPanel Text="Mapa">
+                <MudStack Spacing="2" Class="pt-3">
+                    <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
+                        <MudButton Variant="@(!heat ? Variant.Filled : Variant.Outlined)" OnClick="() => SetMode(false)" aria-pressed="@(!heat)">Agrupaciones</MudButton>
+                        <MudButton Variant="@(heat ? Variant.Filled : Variant.Outlined)" OnClick="() => SetMode(true)" Disabled="@(mappedCount < 2)" aria-pressed="@heat">Mapa de calor</MudButton>
+                    </MudStack>
+                    @if (heat)
+                    {
+                        <div class="analysis-legend"><span></span> Concentración de hechos reportados</div>
+                    }
+                    @if (mappedCount == 0)
+                    {
+                        <MudAlert Severity="Severity.Info">Los reportes de esta consulta no tienen coordenadas representables.</MudAlert>
+                    }
+                    else
+                    {
+                        <AnalysisMap Reports="visible" Heat="heat" Selected="SelectGroup" />
+                    }
+
+                    <MudText Typo="Typo.h6" HtmlTag="h2">Reportes por día</MudText>
+                    @if (days.Length > 0)
+                    {
+                        <div class="analysis-days" role="group" aria-label="Filtrar por día de los hechos">
+                            @foreach (var day in days)
+                            {
+                                <button type="button" class="analysis-day" aria-pressed="@(selectedDay == day.Date ? "true" : "false")"
+                                        aria-label="@($"{day.Date:dd/MM/yyyy}, {day.Count} reportes")" @onclick="() => SelectDay(day.Date)">
+                                    <span>@day.Count</span>
+                                    <span class="analysis-bar" style="height:@(100 * day.Count / maxDayCount)%"></span>
+                                    <span>@day.Date.ToString("dd/MM/yy")</span>
+                                </button>
+                            }
+                        </div>
+                    }
+                    @if (undatedCount > 0)
+                    {
+                        <MudText Typo="Typo.body2">Sin fecha de los hechos: @undatedCount</MudText>
+                    }
+                    @if (selectedDay is not null || selectedGroup is not null)
+                    {
+                        <MudStack Row="true" Wrap="Wrap.Wrap">
+                            @if (selectedDay is { } day)
+                            {
+                                <MudButton OnClick="() => SelectDay(null)">Quitar día @day.ToString("dd/MM/yyyy")</MudButton>
+                            }
+                            @if (selectedGroup is not null)
+                            {
+                                <MudButton OnClick="() => selectedGroup = null">Quitar selección del mapa</MudButton>
+                            }
+                        </MudStack>
+                    }
+                    <MudText Typo="Typo.h6" HtmlTag="h2">@(selectedGroup is null ? "Reportes de la consulta" : "Reportes de la agrupación")</MudText>
+                    <AnalysisReportTable Items="@(selectedGroup is null ? visible : visible.Where(report => selectedGroup.Contains(report.Folio)).ToArray())" />
+                </MudStack>
+            </MudTabPanel>
+        </MudTabs>
+    }
+</MudStack>
+
+@code {
+    private IReadOnlyList<AnalysisReport> records = [];
+    private AnalysisReport[] visible = [];
+    private (DateOnly Date, int Count)[] days = [];
+    private DateTime? from, to;
+    private DateOnly? selectedDay;
+    private string? municipality, circumstance;
+    private HashSet<string>? selectedGroup;
+    private int mappedCount, maxDayCount, undatedCount;
+    private bool heat, includeExamples, loading = true, error;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private Task LoadExamplesAsync(bool value)
+    {
+        includeExamples = value;
+        return LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        error = false;
+        try
+        {
+            records = await Reports.GetAnalysisAsync(Environment.IsDevelopment() && includeExamples);
+            SetFilter(() => { });
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "No se pudieron cargar los reportes para análisis.");
+            error = true;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private IEnumerable<string> Options(Func<AnalysisReport, string?> selector) =>
+        records.Select(selector).OfType<string>().Where(value => !string.IsNullOrWhiteSpace(value)).Distinct().Order();
+
+    private void SetFilter(Action update)
+    {
+        update();
+        if (from > to)
+            to = null;
+        selectedDay = null;
+        Refresh();
+    }
+
+    private void SelectDay(DateOnly? day)
+    {
+        selectedDay = selectedDay == day ? null : day;
+        Refresh();
+    }
+
+    private void Refresh()
+    {
+        selectedGroup = null;
+        DateOnly? start = from is { } first ? DateOnly.FromDateTime(first) : null;
+        DateOnly? end = to is { } last ? DateOnly.FromDateTime(last) : null;
+        var filtered = records.Where(report =>
+            (string.IsNullOrEmpty(municipality) || report.Municipio == municipality) &&
+            (string.IsNullOrEmpty(circumstance) || report.Circunstancia == circumstance) &&
+            (start is null || report.FechaHechos >= start) && (end is null || report.FechaHechos <= end)).ToArray();
+        days = filtered.Where(report => report.FechaHechos.HasValue).GroupBy(report => report.FechaHechos!.Value)
+            .OrderBy(group => group.Key).Select(group => (group.Key, group.Count())).ToArray();
+        maxDayCount = days.Length == 0 ? 1 : days.Max(day => day.Count);
+        undatedCount = filtered.Count(report => report.FechaHechos is null);
+        visible = filtered.Where(report => selectedDay is null || report.FechaHechos == selectedDay)
+            .OrderByDescending(report => report.FechaHechos).ThenBy(report => report.Folio).ToArray();
+        mappedCount = visible.Count(report => report.Coordenadas is not null);
+        heat &= mappedCount >= 2;
+    }
+
+    private void SetMode(bool value)
+    {
+        heat = value;
+        selectedGroup = null;
+    }
+
+    private void SelectGroup(string[] folios) => selectedGroup = folios.ToHashSet(StringComparer.Ordinal);
+}

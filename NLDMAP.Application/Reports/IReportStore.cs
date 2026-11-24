@@ -5,6 +5,7 @@ namespace NLDMAP.Application.Reports;
 
 public interface IReportStore
 {
+    Task<IReadOnlyList<AnalysisReport>> GetAnalysisAsync(bool includeLocalExamples);
     Task CreateAsync(Reporte report);
     Task<PageResult<ReportRow>> GetPageAsync(string? authorId, int page);
     Task<IReadOnlyList<ReportMapPoint>> GetMapAsync(bool publicOnly, string? authorId);

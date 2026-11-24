@@ -1,0 +1,95 @@
+@implements IAsyncDisposable
+@using NLDMAP.Application.Reports
+@inject IJSRuntime JS
+@inject ILogger<AnalysisMap> Logger
+
+<div @ref="element" class="analysis-map" role="region" aria-label="Mapa de los lugares de los hechos"></div>
+@if (error)
+{
+    <MudAlert Severity="Severity.Warning">No se pudo cargar el mapa. La tabla sigue disponible.</MudAlert>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<AnalysisReport> Reports { get; set; } = [];
+    [Parameter] public bool Heat { get; set; }
+    [Parameter] public EventCallback<string[]> Selected { get; set; }
+
+    private ElementReference element;
+    private IJSObjectReference? module;
+    private DotNetObjectReference<AnalysisMap>? reference;
+    private IReadOnlyList<AnalysisReport>? drawn;
+    private bool? drawnHeat;
+    private bool error, disposed;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (disposed || error || (ReferenceEquals(drawn, Reports) && drawnHeat == Heat))
+            return;
+
+        var reports = Reports;
+        var heat = Heat;
+        try
+        {
+            if (module is null)
+            {
+                var imported = await JS.InvokeAsync<IJSObjectReference>("import", "./js/report-location-map.js");
+                if (disposed)
+                {
+                    await imported.DisposeAsync();
+                    return;
+                }
+
+                module = imported;
+                reference = DotNetObjectReference.Create(this);
+                await module.InvokeVoidAsync("initialize", element, null, true, reference);
+            }
+
+            if (disposed)
+                return;
+
+            var pins = reports.Where(report => report.Coordenadas is not null)
+                .Select(report => new { report.Folio, Latitude = report.Coordenadas!.Latitud, Longitude = report.Coordenadas.Longitud });
+            await module.InvokeVoidAsync("setAnalysisPoints", element, pins, heat, !ReferenceEquals(drawn, reports));
+            drawn = reports;
+            drawnHeat = heat;
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (JSException exception)
+        {
+            Logger.LogWarning(exception, "No se pudo dibujar el mapa de análisis.");
+            error = true;
+            StateHasChanged();
+        }
+    }
+
+    [JSInvokable]
+    public Task SelectReports(string[] folios) => Selected.InvokeAsync(folios);
+
+    public async ValueTask DisposeAsync()
+    {
+        disposed = true;
+        try
+        {
+            if (module is not null)
+            {
+                try
+                {
+                    await module.InvokeVoidAsync("destroy", element);
+                }
+                finally
+                {
+                    await module.DisposeAsync();
+                }
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        finally
+        {
+            reference?.Dispose();
+        }
+    }
+}

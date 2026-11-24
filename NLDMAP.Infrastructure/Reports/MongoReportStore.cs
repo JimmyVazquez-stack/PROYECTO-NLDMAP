@@ -60,6 +60,21 @@ public sealed class MongoReportStore(IMongoDatabase database) : IReportStore
         return document is null ? null : ReportDocument.Read(document);
     }
 
+    public async Task<IReadOnlyList<AnalysisReport>> GetAnalysisAsync(bool includeLocalExamples)
+    {
+        var filters = Builders<BsonDocument>.Filter;
+        var filter = filters.Eq("estadoRevision.codigo", "aprobado");
+        if (includeLocalExamples)
+            filter |= filters.Eq("idUsuario", "nldmap-pruebas-locales") &
+                filters.Regex("hechos.descripcionHechos", new BsonRegularExpression("^REPORTE FICTICIO DE PRUEBA "));
+
+        var projection = Builders<BsonDocument>.Projection.Include("folioInterno")
+            .Include("hechos.fechaHechos").Include("ubicacion.coordenadas").Include("ubicacion.municipio")
+            .Include("catalogos.municipio").Include("catalogos.circunstancia");
+        var documents = await reports.Find(filter).Project<BsonDocument>(projection).ToListAsync();
+        return documents.Select(ReportDocument.ReadAnalysis).ToArray();
+    }
+
     public async Task<IReadOnlyList<ReportMapPoint>> GetMapAsync(bool publicOnly, string? authorId)
     {
         var filters = Builders<BsonDocument>.Filter;
