@@ -37,7 +37,7 @@ namespace NLDMAP.Infrastructure
             services.AddScoped<AccountEmailSender>();
             services.AddMongoCatalogs(configuration);
             
-            /*AGREGAR SERVICIO NEO4J  */
+            //Agregar la conexion a Neo4j
             services.AddNeo4J(configuration);
             
             return services;

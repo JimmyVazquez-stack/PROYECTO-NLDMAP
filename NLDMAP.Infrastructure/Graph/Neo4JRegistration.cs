@@ -12,6 +12,7 @@ public static class Neo4JRegistration
         IConfiguration configuration
     )
     {
+        // Agregar neo4j driver como un servicio singleton
         services.AddSingleton<IDriver>(_ => {
             var uri = configuration["Neo4j:Uri"];
             var username = configuration["Neo4j:Username"];
