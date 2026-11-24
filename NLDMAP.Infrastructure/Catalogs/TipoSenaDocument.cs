@@ -12,14 +12,10 @@ internal sealed class TipoSenaDocument
 
     [BsonElement("nombre")]
     public string Nombre { get; set; } = "";
-    [BsonElement("orden")]
-    public int Orden { get; set; }
-    [BsonElement("version")]
-    public string Version { get; set; } = "";
     [BsonElement("actualizadoEnUtc")]
     public DateTime ActualizadoEnUtc { get; set; }
     [BsonElement("actualizadoPor")]
     public string ActualizadoPor { get; set; } =  "";
 
-    public TipoSenaRow ToRow() => new TipoSenaRow(Id, Nombre, Orden, Version);
+    public TipoSenaRow ToRow() => new TipoSenaRow(Id, Nombre);
 }

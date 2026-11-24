@@ -141,7 +141,10 @@ public sealed class CitizenAccounts(
         new(user.DisplayName, user.Email, user.EmailConfirmed,
             reporter ? RoleNames.Reporter : RoleNames.Guest,
             reporter && user.EmailConfirmed && !string.IsNullOrWhiteSpace(user.DisplayName) &&
-            !string.IsNullOrWhiteSpace(user.PhoneNumber));
+            !string.IsNullOrWhiteSpace(user.PhoneNumber))
+        {
+            PhoneNumber = user.PhoneNumber
+        };
 
     private static Task LockWritesAsync(ApplicationDbContext db) =>
         db.Database.IsNpgsql()

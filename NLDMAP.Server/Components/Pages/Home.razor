@@ -1,4 +1,4 @@
-﻿@page "/"
+@page "/"
 @page "/inicio"
 @layout MainLayout
 @attribute [AllowAnonymous]
@@ -19,16 +19,32 @@
                         Búsqueda Tlaxcala
                     </MudLink>
 
-                    <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="4">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Spacing="3">
                         <MudLink Href="/" Underline="Underline.Hover" Class="public-link">
                             Inicio
                         </MudLink>
                         <MudLink Href="#quienes-somos" Underline="Underline.Hover" Class="public-link">
                             Quiénes somos
                         </MudLink>
-                        <MudLink Href="/cuenta/perfil" Underline="Underline.Hover" Class="public-link">
-                            Mi cuenta
-                        </MudLink>
+                        <AuthorizeView>
+                            <Authorized>
+                                <AuthorizeView Policy="@PermissionNames.Access" Context="staff">
+                                    <Authorized>
+                                        <MudLink Href="/admin" Underline="Underline.Hover" Class="public-link">Administración</MudLink>
+                                    </Authorized>
+                                    <NotAuthorized>
+                                        <MudLink Href="/cuenta/perfil" Underline="Underline.Hover" Class="public-link">Mi cuenta</MudLink>
+                                    </NotAuthorized>
+                                </AuthorizeView>
+                            </Authorized>
+                            <NotAuthorized>
+                                <MudLink Href="/cuenta/entrar" Underline="Underline.Hover" Class="public-link">
+                                    Iniciar sesión
+                                </MudLink>
+                                <MudButton Href="/cuenta/registro" Variant="Variant.Filled" Color="Color.Primary"
+                                           Class="public-register">Crear cuenta</MudButton>
+                            </NotAuthorized>
+                        </AuthorizeView>
                     </MudStack>
                 </MudStack>
             </nav>
@@ -38,27 +54,21 @@
     <main>
         <section class="public-hero" aria-labelledby="inicio-titulo">
             <MudContainer MaxWidth="MaxWidth.Large">
-                <MudGrid>
-                    <MudItem xs="12" lg="8">
-                        <MudStack Spacing="3">
-                            <MudText Typo="Typo.overline" Class="public-eyebrow">
-                                Información para la ciudadanía
-                            </MudText>
-                            <MudText id="inicio-titulo" Typo="Typo.h2" HtmlTag="h1" Class="public-title">
-                                Un espacio para acercarnos a la información.
-                            </MudText>
-                            <MudText Typo="Typo.h6" HtmlTag="p" Class="public-lead">
-                                Conoce Búsqueda Tlaxcala y el propósito de este espacio de consulta pública.
-                            </MudText>
-                            <div>
-                                <MudButton Href="#quienes-somos" Variant="Variant.Filled"
-                                           Color="Color.Primary" Size="Size.Large">
-                                    Conoce el proyecto
-                                </MudButton>
-                            </div>
-                        </MudStack>
-                    </MudItem>
-                </MudGrid>
+                <MudText id="inicio-titulo" Typo="Typo.h2" HtmlTag="h1" Class="public-title">
+                    Búsqueda Tlaxcala
+                </MudText>
+                <MudText Typo="Typo.body1" HtmlTag="p" Class="public-lead">
+                    Crea un reporte, consulta el mapa o revisa tus reportes.
+                </MudText>
+
+                <AuthorizeView>
+                    <Authorized>
+                        @ActionLinks("/reportes/crear", "/reportes/mis-reportes")
+                    </Authorized>
+                    <NotAuthorized>
+                        @ActionLinks("/cuenta/entrar", "/cuenta/entrar")
+                    </NotAuthorized>
+                </AuthorizeView>
             </MudContainer>
         </section>
 
@@ -100,5 +110,20 @@
 </div>
 
 @code {
+    private RenderFragment ActionLinks(string crear, string misReportes) => @<nav class="public-actions" aria-label="Acciones de reportes">
+        <a href="@crear" class="public-action public-action-primary">
+            <span class="public-action-icon"><MudIcon Icon="@Icons.Material.Outlined.PostAdd" aria-hidden="true" /></span>
+            <span>Crear reporte nuevo</span>
+        </a>
+        <a href="/mapa" class="public-action">
+            <span class="public-action-icon"><MudIcon Icon="@Icons.Material.Outlined.Map" aria-hidden="true" /></span>
+            <span>Ver el mapa</span>
+        </a>
+        <a href="@misReportes" class="public-action">
+            <span class="public-action-icon"><MudIcon Icon="@Icons.Material.Outlined.FolderOpen" aria-hidden="true" /></span>
+            <span>Ver mis reportes</span>
+        </a>
+    </nav>;
+
     private readonly MudTheme theme = NldmapTheme.CreatePublic();
 }

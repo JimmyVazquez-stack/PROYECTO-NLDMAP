@@ -11,13 +11,9 @@ internal sealed class TezDocument
     [BsonId, BsonGuidRepresentation(GuidRepresentation.Standard)]
     public Guid Id { get; set; }
     [BsonElement("colorPiel")]
-    public string ColorPiel { get; set; } = "";
+    public string NombreColor { get; set; } = "";
     [BsonElement("colorHex")] 
     public string ColorHex { get; set; } = "";
-    [BsonElement("orden")]
-    public int Orden { get; set; }
-    [BsonElement("version")]
-    public string Version { get; set; } = "";
     [BsonElement("creadoEnUtc")]
     public DateTime CreadoEnUtc { get; set; }
     [BsonElement("creadoPor")]
@@ -27,5 +23,5 @@ internal sealed class TezDocument
     [BsonElement("actualizadoPor")]
     public string ActualizadoPor { get; set; } = "";
 
-    public TezRow ToRow() => new(Id, ColorPiel, ColorHex, Orden, Version);
+    public TezRow ToRow() => new(Id, NombreColor, ColorHex);
 }

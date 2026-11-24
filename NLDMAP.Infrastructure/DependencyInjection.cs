@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,6 +8,8 @@ using NLDMAP.Application.Administration;
 using NLDMAP.Application.Accounts;
 using NLDMAP.Infrastructure.Administration;
 using NLDMAP.Infrastructure.Catalogs;
+using NLDMAP.Infrastructure.Reports;
+using NLDMAP.Application.Reports;
 
 namespace NLDMAP.Infrastructure
 {
@@ -35,6 +37,10 @@ namespace NLDMAP.Infrastructure
             services.AddScoped<ICitizenAccounts, CitizenAccounts>();
             services.AddScoped<AccountEmailSender>();
             services.AddMongoCatalogs(configuration);
+            services.AddSingleton<IReportStore, MongoReportStore>();
+            services.AddScoped<ReportAccess>();
+            services.AddScoped<ReportCatalogs>();
+            services.AddScoped<ReportService>();
 
             return services;
         }

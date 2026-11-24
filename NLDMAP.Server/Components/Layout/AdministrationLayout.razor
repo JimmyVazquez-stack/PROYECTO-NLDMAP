@@ -190,6 +190,12 @@
                 </MudNavLink>
 
 
+                <AuthorizeView Policy="@PermissionNames.ReportsRead">
+                    <MudNavLink Href="/admin/reportes" Icon="@Icons.Material.Outlined.Description">
+                        Reportes
+                    </MudNavLink>
+                </AuthorizeView>
+
                 @* Usuarios *@
                 <AuthorizeView Policy="@PermissionNames.UsersRead">
 

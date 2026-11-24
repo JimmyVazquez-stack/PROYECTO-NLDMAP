@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
-using NLDMAP.Application.Accounts;
+using NLDMAP.Application.Reports;
 using NLDMAP.Application.Security;
 
 namespace NLDMAP.Server.Authentication;
@@ -12,7 +12,7 @@ public sealed class ReportCreationRequirement : IAuthorizationRequirement
 }
 
 public sealed class ReportCreationAuthorizationHandler(
-    ICitizenAccounts accounts, IOptions<IdentityOptions> identity)
+    ReportAccess access, IOptions<IdentityOptions> identity)
     : AuthorizationHandler<ReportCreationRequirement>
 {
     protected override async Task HandleRequirementAsync(
@@ -22,7 +22,7 @@ public sealed class ReportCreationAuthorizationHandler(
             return;
 
         var actor = CurrentActor.FromPrincipal(context.User, identity.Value);
-        if ((await accounts.GetProfileAsync(actor))?.CanCreateReports == true)
+        if (await access.CanCreateAsync(actor))
             context.Succeed(requirement);
     }
 }

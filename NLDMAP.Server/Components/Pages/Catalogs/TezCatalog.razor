@@ -65,27 +65,16 @@
                         @(editing.Id.HasValue ? "Editar opción" : "Crear opción")
                     </MudText>
 
-                    <MudTextField T="string" Label="Color de piel" Variant="Variant.Outlined"
-                                  @bind-Value="editing.ColorPiel" For="() => editing.ColorPiel"
-                                  MaxLength="80" Disabled="Busy" />
-
-                    <MudTextField T="string" Label="Color HEX" Variant="Variant.Outlined"
-                                  @bind-Value="editing.ColorHex" For="() => editing.ColorHex"
-                                  Immediate="true" Disabled="Busy"
-                                  HelperText="Ejemplo #D7BD96" />
-
-                    @if (SwatchStyle(editing.ColorHex) is string previewStyle)
-                    {
-                        <div>
-                            <span style="@previewStyle" aria-hidden="true"></span>
-                            <span>Vista previa</span>
-                        </div>
-                    }
-
-                    <MudNumericField T="int" Label="Orden de presentación"
-                                     Variant="Variant.Outlined" @bind-Value="editing.Orden"
-                                     For="() => editing.Orden" Min="0" Max="9999"
-                                     Disabled="Busy" />
+                    <MudSelect T="string" Label="Tono Monk" Variant="Variant.Outlined"
+                               @bind-Value="editing.NombreColor" For="() => editing.NombreColor" Disabled="Busy">
+                        @foreach (var tono in NLDMAP.Domain.Catalogs.Tez.TonosMonk)
+                        {
+                            <MudSelectItem T="string" Value="@tono.Key">
+                                <span style="@SwatchStyle(tono.Value)" aria-hidden="true"></span>
+                                @tono.Key
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
 
                     <MudStack Row="true" Spacing="2">
                         <MudButton ButtonType="ButtonType.Submit" Color="Color.Primary"
@@ -133,12 +122,11 @@
             <HeaderContent>
                 <MudTh>Color de piel</MudTh>
                 <MudTh>Color HEX</MudTh>
-                <MudTh>Orden</MudTh>
                 <MudTh>Acciones</MudTh>
             </HeaderContent>
 
             <RowTemplate>
-                <MudTd DataLabel="Color de piel">@context.ColorPiel</MudTd>
+                <MudTd DataLabel="Color de piel">@context.NombreColor</MudTd>
 
                 <MudTd DataLabel="Color HEX">
                     @if (SwatchStyle(context.ColorHex) is string rowStyle)
@@ -152,8 +140,6 @@
                     }
                 </MudTd>
 
-                <MudTd DataLabel="Orden">@context.Orden</MudTd>
-
                 <MudTd DataLabel="Acciones">
                     @if (CanManage)
                     {
@@ -161,6 +147,8 @@
                                    Disabled="Busy" OnClick="() => Edit(context)">
                             Editar
                         </MudButton>
+                        <EliminarOpcion @key="context.Id" Nombre="@context.NombreColor" Busy="Busy"
+                                        OnConfirm="() => DeleteAsync(context.Id)" />
                     }
                     else
                     {
